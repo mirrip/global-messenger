@@ -127,13 +127,30 @@
         <!-- INPUT BAR -->
         <footer class="input-bar">
           <input type="file" id="file-input" style="display: none">
-          <button id="btn-attach" class="icon-btn" title="Прикрепить файл (до 1 ТБ)">📎</button>
+          <button id="btn-attach" class="icon-btn" title="Прикрепить фото, видео или файл (до 1 ТБ)">📎</button>
           <div class="input-wrapper">
             <textarea id="message-input" placeholder="Напишите сообщение..." rows="1"></textarea>
           </div>
           <button id="btn-send" class="btn send-btn" title="Отправить">➔</button>
         </footer>
       </main>
+    </div>
+  </div>
+
+  <!-- LIGHTBOX MODAL FOR IMAGES -->
+  <div id="lightbox-modal" class="lightbox-modal hidden">
+    <div class="lightbox-backdrop"></div>
+    <div class="lightbox-content">
+      <div class="lightbox-header">
+        <span id="lightbox-title" class="lightbox-title">Просмотр фото</span>
+        <div class="lightbox-actions">
+          <button id="lightbox-download-btn" class="btn-lightbox" title="Скачать">⬇ Скачать</button>
+          <button id="lightbox-close-btn" class="btn-lightbox close-btn" title="Закрыть">✕</button>
+        </div>
+      </div>
+      <div class="lightbox-body">
+        <img id="lightbox-img" src="" alt="Full view">
+      </div>
     </div>
   </div>
 
