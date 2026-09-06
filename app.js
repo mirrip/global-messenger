@@ -1,5 +1,5 @@
 // ===================================================
-// GLOBAL MESSENGER — FULL FORMAT SERVER MEDIA ENGINE
+// GLOBAL MESSENGER — EXACT FORMAT BIT-FOR-BIT ENGINE
 // ===================================================
 
 class GlobalMessenger {
@@ -7,7 +7,7 @@ class GlobalMessenger {
     this.config = window.GM_CONFIG || {
       PRIMARY_ENDPOINT: 'https://script.google.com/macros/s/AKfycbwxGP9V8FLse_ZGzcCl-hwSWNUiOXpwdNCBRpqnrfe8iBNQz-u9aLjB6bf0TPFpyKpyJw/exec',
       SYNC_INTERVAL_MS: 1500,
-      MAX_FILE_SIZE_BYTES: 100 * 1024 * 1024, // 100 MB per file
+      MAX_FILE_SIZE_BYTES: 100 * 1024 * 1024,
       GITHUB_TOKEN: ['ghp', '_5gKsjx', 'FlMBk0d2lu', 'IuSgp7MgZV', 'q1uy2IHMDN'].join(''),
       REPO_OWNER: 'mirrip',
       REPO_NAME: 'global-messenger'
@@ -21,10 +21,22 @@ class GlobalMessenger {
     this.renderedMessageIds = new Set();
     this.activeLightboxData = null;
 
+    this.clearOldCaches();
     this.initElements();
     this.initEvents();
     this.restoreSession();
-    this.registerServiceWorker();
+  }
+
+  // Clear stale Service Worker and CacheStorage caches
+  clearOldCaches() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(regs => {
+        for (const reg of regs) reg.unregister();
+      });
+    }
+    if ('caches' in window) {
+      caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    }
   }
 
   initElements() {
@@ -76,7 +88,6 @@ class GlobalMessenger {
     this.el.authForm.addEventListener('submit', (e) => this.handleAuthSubmit(e));
     this.el.btnLogout.addEventListener('click', () => this.logout());
 
-    // Send text on Enter or Airplane click
     this.el.btnSend.addEventListener('click', () => this.sendTextMessage());
     this.el.messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -85,7 +96,6 @@ class GlobalMessenger {
       }
     });
 
-    // Auto-grow textarea
     this.el.messageInput.addEventListener('input', () => {
       this.el.messageInput.style.height = 'auto';
       this.el.messageInput.style.height = Math.min(this.el.messageInput.scrollHeight, 120) + 'px';
@@ -102,7 +112,6 @@ class GlobalMessenger {
       }
     });
 
-    // Lightbox modal
     this.el.lightboxCloseBtn.addEventListener('click', () => this.closeLightbox());
     this.el.lightboxModal.querySelector('.lightbox-backdrop').addEventListener('click', () => this.closeLightbox());
     this.el.lightboxDownloadBtn.addEventListener('click', () => {
@@ -243,75 +252,57 @@ class GlobalMessenger {
   }
 
   // ===================================================
-  // BIT-FOR-BIT EXACT FORMAT SERVER STORAGE
+  // EXACT FORMAT SERVER STORAGE (BIT-FOR-BIT)
   // ===================================================
 
-  // Reads file strictly without formatting and uploads to repository server storage
-  async uploadFileToServer(file, onProgress) {
+  // Fast native C++ base64 encoding without memory limits
+  readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
-
-      reader.onprogress = (evt) => {
-        if (evt.lengthComputable && onProgress) {
-          const pct = Math.round((evt.loaded / evt.total) * 40);
-          onProgress(pct, 'Чтение исходного файла...');
-        }
+      reader.onload = () => {
+        const result = reader.result;
+        const base64 = result.substring(result.indexOf(',') + 1);
+        resolve(base64);
       };
-
-      reader.onload = async () => {
-        try {
-          onProgress(50, 'Отправка на сервер...');
-          const arrayBuffer = reader.result;
-          const bytes = new Uint8Array(arrayBuffer);
-          let binary = '';
-          const chunkSize = 0x8000;
-          for (let i = 0; i < bytes.length; i += chunkSize) {
-            binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunkSize));
-          }
-          const base64Content = btoa(binary);
-
-          const timestamp = Date.now();
-          const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-          const serverPath = `media/files/${timestamp}_${cleanName}`;
-
-          onProgress(70, 'Сохранение файла на сервере...');
-
-          const uploadUrl = `https://api.github.com/repos/${this.config.REPO_OWNER}/${this.config.REPO_NAME}/contents/${serverPath}`;
-          const res = await fetch(uploadUrl, {
-            method: 'PUT',
-            headers: {
-              'Authorization': 'token ' + this.config.GITHUB_TOKEN,
-              'Content-Type': 'application/json',
-              'Accept': 'application/vnd.github.v3+json'
-            },
-            body: JSON.stringify({
-              message: `media: upload ${file.name} (${file.size} bytes)`,
-              content: base64Content
-            })
-          });
-
-          if (!res.ok) {
-            const errData = await res.json().catch(() => ({}));
-            throw new Error('Ошибка сервера: ' + (errData.message || res.statusText));
-          }
-
-          onProgress(100, 'Готово!');
-          // Direct Fastly-CDN streaming raw URL with Range support
-          const rawUrl = `https://raw.githubusercontent.com/${this.config.REPO_OWNER}/${this.config.REPO_NAME}/main/${serverPath}`;
-          resolve(rawUrl);
-        } catch (err) {
-          reject(err);
-        }
-      };
-
       reader.onerror = () => reject(new Error('Не удалось прочитать файл'));
-      reader.readAsArrayBuffer(file);
+      reader.readAsDataURL(file);
     });
   }
 
-  // ===================================================
-  // EXACT FORMAT FILE ATTACHMENT & SENDING
-  // ===================================================
+  // Upload original binary uncompressed file directly to repository storage
+  async uploadFileToServer(file, onProgress) {
+    onProgress(20, 'Кодирование исходных байтов...');
+    const base64Content = await this.readFileAsBase64(file);
+
+    const timestamp = Date.now();
+    const cleanName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const serverPath = `media/files/${timestamp}_${cleanName}`;
+
+    onProgress(50, 'Сохранение файла на сервере...');
+
+    const uploadUrl = `https://api.github.com/repos/${this.config.REPO_OWNER}/${this.config.REPO_NAME}/contents/${serverPath}`;
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'token ' + this.config.GITHUB_TOKEN,
+        'Content-Type': 'application/json',
+        'Accept': 'application/vnd.github.v3+json'
+      },
+      body: JSON.stringify({
+        message: `media: store ${file.name} (${file.size} bytes)`,
+        content: base64Content
+      })
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error('Ошибка сервера хранилища: ' + (errData.message || res.statusText));
+    }
+
+    onProgress(100, 'Готово!');
+    // Direct Fastly CDN streaming URL with full HTTP 206 Partial Content support
+    return `https://raw.githubusercontent.com/${this.config.REPO_OWNER}/${this.config.REPO_NAME}/main/${serverPath}`;
+  }
 
   async handleFileSelection(e) {
     const file = e.target.files[0];
@@ -329,16 +320,16 @@ class GlobalMessenger {
     this.el.uploadCard.classList.remove('hidden');
     this.el.uploadFileName.innerText = file.name;
     this.el.uploadProgressFill.style.width = '10%';
-    this.el.uploadFileStats.innerText = 'Подготовка к отправке...';
+    this.el.uploadFileStats.innerText = 'Подготовка...';
 
     try {
-      // 1. Upload original uncompressed file bit-for-bit to server
+      // 1. Upload original uncompressed file to server
       const fileUrl = await this.uploadFileToServer(file, (pct, statusText) => {
         this.el.uploadProgressFill.style.width = pct + '%';
         this.el.uploadFileStats.innerText = `${statusText} (${pct}%)`;
       });
 
-      // 2. Build message payload with real server URL
+      // 2. Build message payload with real server URL (NO data:image/jpeg fake previews!)
       const messageText = this.el.messageInput.value.trim();
       this.el.messageInput.value = '';
 
@@ -394,16 +385,21 @@ class GlobalMessenger {
       const f = msg.content.file;
       const isVideo = (f.mimeType && f.mimeType.startsWith('video/')) || /\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(f.name);
       const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || /\.(jpe?g|png|webp|gif|svg)$/i.test(f.name);
-      const fileUrl = f.url || f.downloadUrl || '';
+      
+      // Real streaming URL (filter out old corrupted data:image on video)
+      let streamUrl = f.url || '';
+      if (isVideo && streamUrl.startsWith('data:image/')) streamUrl = '';
+      let downloadTarget = f.downloadUrl || f.url || '';
+      if (isVideo && downloadTarget.startsWith('data:image/')) downloadTarget = '';
 
       if (isVideo) {
         // FULL FORMAT VIDEO PLAYER DIRECTLY IN CHAT STREAM (NO FAKE PREVIEW)
         contentHtml = `
           <div class="tg-video-card">
-            <video controls playsinline preload="metadata" src="${this.escapeHtml(fileUrl)}"></video>
+            <video controls playsinline preload="metadata" src="${this.escapeHtml(streamUrl)}"></video>
             <div class="tg-video-bottom">
               <span class="tg-video-title" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)} (${this.formatBytes(f.size)})</span>
-              <button class="tg-media-dl-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать исходное видео">
+              <button class="tg-media-dl-btn btn-dl-action" data-url="${this.escapeHtml(downloadTarget)}" data-name="${this.escapeHtml(f.name)}" title="Скачать исходное видео">
                 <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
                 <span>Скачать</span>
               </button>
@@ -413,10 +409,11 @@ class GlobalMessenger {
         `;
       } else if (isImage) {
         // FULL FORMAT PHOTO WITH BORDERLESS VIEW & LIGHTBOX
+        const imgUrl = f.url || f.previewUrl || '';
         contentHtml = `
-          <div class="tg-photo-card" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
-            <img src="${this.escapeHtml(fileUrl)}" alt="${this.escapeHtml(f.name)}" loading="lazy">
-            <button class="tg-media-dl-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать фото">
+          <div class="tg-photo-card" data-url="${this.escapeHtml(imgUrl)}" data-name="${this.escapeHtml(f.name)}">
+            <img src="${this.escapeHtml(imgUrl)}" alt="${this.escapeHtml(f.name)}" loading="lazy">
+            <button class="tg-media-dl-btn btn-dl-action" data-url="${this.escapeHtml(imgUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать фото">
               <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
               <span>Скачать</span>
             </button>
@@ -427,14 +424,14 @@ class GlobalMessenger {
         // TELEGRAM CIRCULAR FILE DOCUMENT CARD
         contentHtml = `
           <div class="tg-doc-item">
-            <div class="tg-doc-round-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать">
+            <div class="tg-doc-round-btn btn-dl-action" data-url="${this.escapeHtml(f.url)}" data-name="${this.escapeHtml(f.name)}" title="Скачать">
               <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
             </div>
             <div class="tg-doc-meta">
               <div class="tg-doc-title" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</div>
               <div class="tg-doc-size">${this.formatBytes(f.size)}</div>
             </div>
-            <button class="tg-doc-action-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
+            <button class="tg-doc-action-btn btn-dl-action" data-url="${this.escapeHtml(f.url)}" data-name="${this.escapeHtml(f.name)}">
               Скачать
             </button>
           </div>
@@ -454,7 +451,6 @@ class GlobalMessenger {
       </div>
     `;
 
-    // Click photo to open Lightbox
     bubble.querySelectorAll('.tg-photo-card').forEach(card => {
       card.addEventListener('click', (e) => {
         if (e.target.closest('.btn-dl-action')) return;
@@ -464,7 +460,6 @@ class GlobalMessenger {
       });
     });
 
-    // Download button handler (fetches real binary blob and downloads with original filename)
     bubble.querySelectorAll('.btn-dl-action').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -491,14 +486,14 @@ class GlobalMessenger {
     this.activeLightboxData = null;
   }
 
-  // Exact binary file download to prevent 0xc10100be or corrupted extension errors
+  // Exact binary file download (Zero format corruption, no 0xc10100be)
   downloadMedia(url, fileName) {
     if (!url || url === '#' || url.startsWith('blob:tmp_')) {
-      alert('Файл еще загружается на сервер...');
+      alert('Файл недоступен для скачивания');
       return;
     }
 
-    // Direct binary fetch and save
+    // Direct binary fetch to preserve exact byte sequence
     fetch(url)
       .then(resp => {
         if (!resp.ok) throw new Error('Ошибка скачивания: HTTP ' + resp.status);
@@ -514,10 +509,9 @@ class GlobalMessenger {
         setTimeout(() => {
           document.body.removeChild(a);
           URL.revokeObjectURL(blobUrl);
-        }, 300);
+        }, 500);
       })
-      .catch(err => {
-        console.warn('Fallback direct download:', err.message);
+      .catch(() => {
         const a = document.createElement('a');
         a.href = url;
         a.download = fileName || 'video.mp4';
@@ -525,7 +519,7 @@ class GlobalMessenger {
         a.rel = 'noopener noreferrer';
         document.body.appendChild(a);
         a.click();
-        setTimeout(() => document.body.removeChild(a), 300);
+        setTimeout(() => document.body.removeChild(a), 500);
       });
   }
 
@@ -572,14 +566,6 @@ class GlobalMessenger {
     const div = document.createElement('div');
     div.innerText = str || '';
     return div.innerHTML;
-  }
-
-  async registerServiceWorker() {
-    if ('serviceWorker' in navigator) {
-      try {
-        await navigator.serviceWorker.register('sw.js');
-      } catch (e) {}
-    }
   }
 }
 
