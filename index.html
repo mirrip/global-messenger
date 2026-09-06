@@ -3,153 +3,181 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Global Messenger — Бессерверный PWA</title>
+  <title>Telegram Web</title>
   <link rel="manifest" href="manifest.webmanifest">
-  <meta name="theme-color" content="#121824">
+  <meta name="theme-color" content="#17212b">
   <link rel="stylesheet" href="styles.css">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%232563eb'/><path d='M30 52l12 12 28-28' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><circle cx='12' cy='12' r='12' fill='%232aabee'/><path d='M17.5 7.5L5.5 12.2l3.4 1.3 1.3 4.1 2.3-2.1 3.5 2.6L18 7.3z' fill='%23ffffff'/></svg>">
 </head>
-<body class="dark-theme">
+<body class="tg-theme">
   <div id="app">
     <!-- AUTH SCREEN -->
-    <div id="auth-screen" class="auth-wrapper">
-      <div class="auth-card">
-        <div class="brand">
-          <div class="brand-logo">🌐</div>
-          <h1>Global Messenger</h1>
-          <p class="subtitle">Бессерверный мессенджер нового поколения</p>
+    <div id="auth-screen" class="tg-auth-wrapper">
+      <div class="tg-auth-card">
+        <div class="tg-logo-container">
+          <svg class="tg-icon" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="12" fill="#2aabee"/>
+            <path d="M17.8 7.2L4.7 12.2c-.9.4-.9.9-.2 1.1l3.4 1.1 1.2 3.7c.2.4.4.5.7.5.3 0 .5-.1.7-.3l2-1.9 4.1 3c.8.4 1.3.2 1.5-.7l2.7-12.7c.3-1.1-.4-1.6-1.1-1.3zM8.8 14.8l-.3 2.8c-.1.3-.2.4-.4.4-.2 0-.3-.1-.5-.3l-1.4-1.3 7.8-5-5.2 3.4z" fill="#ffffff"/>
+          </svg>
+        </div>
+        <h2>Вход в Telegram</h2>
+        <p class="tg-subtitle">Бессерверный мессенджер с облаком до 1 ТБ</p>
+
+        <div class="tg-auth-tabs">
+          <button id="tab-login" class="tg-tab active">Вход</button>
+          <button id="tab-register" class="tg-tab">Регистрация</button>
         </div>
 
-        <div class="auth-tabs">
-          <button id="tab-login" class="tab-btn active">Вход</button>
-          <button id="tab-register" class="tab-btn">Регистрация</button>
-        </div>
-
-        <form id="auth-form" class="auth-form">
-          <div class="input-group">
-            <label for="auth-username">Имя пользователя</label>
-            <input type="text" id="auth-username" placeholder="@username" required autocomplete="username">
+        <form id="auth-form" class="tg-form">
+          <div class="tg-input-field">
+            <input type="text" id="auth-username" required autocomplete="username" placeholder=" ">
+            <label for="auth-username">Имя пользователя (@username)</label>
           </div>
 
-          <div class="input-group">
+          <div class="tg-input-field">
+            <input type="password" id="auth-password" required autocomplete="current-password" placeholder=" ">
             <label for="auth-password">Пароль</label>
-            <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password">
           </div>
 
-          <button type="submit" id="auth-submit-btn" class="btn primary-btn full-width">
-            Войти в систему
-          </button>
+          <button type="submit" id="auth-submit-btn" class="tg-btn primary">Продолжить</button>
         </form>
 
-        <div id="auth-status" class="status-msg"></div>
-
-        <div class="cloud-info">
-          <span>⚡ Sharded Google Sheets + CacheService</span>
-          <span>📁 Файлы до 1 ТБ через Google Drive</span>
-        </div>
+        <div id="auth-status" class="tg-auth-status"></div>
       </div>
     </div>
 
-    <!-- MAIN CHAT SCREEN -->
-    <div id="main-screen" class="main-wrapper hidden">
-      <!-- SIDEBAR -->
-      <aside class="sidebar">
-        <header class="sidebar-header">
-          <div class="user-profile">
-            <div class="avatar" id="current-user-avatar">?</div>
-            <div class="user-meta">
-              <div class="name" id="current-user-name">Загрузка...</div>
-              <div class="status-badge online">В сети</div>
-            </div>
-          </div>
-          <div class="header-actions">
-            <button id="btn-new-chat" class="icon-btn" title="Новый диалог">💬</button>
-            <button id="btn-settings" class="icon-btn" title="Настройки">⚙️</button>
+    <!-- MAIN TELEGRAM APP -->
+    <div id="main-screen" class="tg-main-container hidden">
+      <!-- LEFT COLUMN / CHAT LIST -->
+      <aside class="tg-sidebar">
+        <header class="tg-sidebar-header">
+          <button id="tg-menu-btn" class="tg-icon-btn" title="Меню">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+          </button>
+          <div class="tg-search-wrapper">
+            <svg class="search-icon" viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            <input type="text" id="chat-search" placeholder="Поиск">
           </div>
         </header>
 
-        <div class="search-box">
-          <input type="text" id="chat-search" placeholder="Поиск диалогов или @пользователей...">
-        </div>
-
-        <div class="chat-list" id="chat-list">
-          <div class="chat-item active" data-chat-id="dm:general">
-            <div class="avatar">🌐</div>
-            <div class="chat-item-meta">
-              <div class="chat-item-top">
-                <span class="chat-title">Общий канал</span>
-                <span class="chat-time" id="general-last-time">12:00</span>
+        <!-- CHATS LIST -->
+        <div class="tg-chats-list" id="chat-list">
+          <div class="tg-chat-item active" data-chat-id="dm:general">
+            <div class="tg-chat-avatar general">🌐</div>
+            <div class="tg-chat-info">
+              <div class="tg-chat-title-row">
+                <span class="tg-chat-title">Общий чат</span>
+                <span class="tg-chat-time" id="general-last-time">17:05</span>
               </div>
-              <div class="chat-preview" id="general-last-msg">Нажмите, чтобы начать общение</div>
+              <div class="tg-chat-preview-row">
+                <span class="tg-chat-preview" id="general-last-msg">Нажмите, чтобы открыть диалог</span>
+                <span class="tg-unread-badge hidden" id="general-unread">0</span>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- BOTTOM NEW CHAT FLOATING BUTTON -->
+        <button id="btn-new-chat" class="tg-fab" title="Новое сообщение">
+          <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
       </aside>
 
-      <!-- CHAT VIEW -->
-      <main class="chat-view">
-        <header class="chat-header">
-          <button id="btn-back" class="icon-btn mobile-only">←</button>
-          <div class="chat-header-info">
-            <div class="chat-header-avatar" id="active-chat-avatar">🌐</div>
-            <div>
-              <h2 id="active-chat-title">Общий канал</h2>
-              <span class="chat-status" id="active-chat-status">Облачная синхронизация активна</span>
+      <!-- RIGHT COLUMN / CONVERSATION VIEW -->
+      <main class="tg-chat-column">
+        <!-- CHAT HEADER -->
+        <header class="tg-chat-header">
+          <button id="btn-back" class="tg-icon-btn mobile-only">
+            <svg viewBox="0 0 24 24" width="24" height="24"><path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+          </button>
+          <div class="tg-chat-header-user">
+            <div class="tg-chat-header-avatar" id="active-chat-avatar">🌐</div>
+            <div class="tg-chat-header-meta">
+              <h3 id="active-chat-title">Общий чат</h3>
+              <span class="tg-chat-status" id="active-chat-status">в сети</span>
             </div>
           </div>
-          <div class="chat-header-actions">
-            <span id="failover-indicator" class="badge-tag success">Шард A (Hot)</span>
-            <button id="btn-logout" class="icon-btn" title="Выйти">🚪</button>
+          <div class="tg-header-actions">
+            <button class="tg-icon-btn" title="Поиск в чате">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/></svg>
+            </button>
+            <button id="btn-logout" class="tg-icon-btn" title="Выйти">
+              <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h8v-2H4V5z"/></svg>
+            </button>
           </div>
         </header>
 
-        <!-- MESSAGES FEED -->
-        <div class="messages-container" id="messages-container">
-          <div class="date-divider">Сегодня</div>
-          <div class="msg-feed" id="messages-feed"></div>
+        <!-- TELEGRAM CHAT HISTORY AREA (WITH DOODLE PATTERN) -->
+        <div class="tg-history-container" id="messages-container">
+          <div class="tg-date-bubble">Сегодня</div>
+          <div class="tg-messages-feed" id="messages-feed"></div>
         </div>
 
-        <!-- UPLOAD PROGRESS OVERLAY -->
-        <div id="upload-progress-card" class="upload-progress-card hidden">
-          <div class="upload-info">
-            <div class="upload-icon">📦</div>
-            <div class="upload-details">
-              <div class="upload-name" id="upload-file-name">file.apk</div>
-              <div class="upload-stats" id="upload-file-stats">0 MB / 0 MB (0%)</div>
+        <!-- UPLOAD PROGRESS CARD -->
+        <div id="upload-progress-card" class="tg-upload-overlay hidden">
+          <div class="tg-upload-box">
+            <div class="tg-upload-icon">
+              <svg viewBox="0 0 24 24" width="28" height="28"><path fill="#2aabee" d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/></svg>
             </div>
-            <button id="upload-cancel-btn" class="icon-btn small">✕</button>
-          </div>
-          <div class="progress-bar-track">
-            <div class="progress-bar-fill" id="upload-progress-fill" style="width: 0%"></div>
+            <div class="tg-upload-info">
+              <div class="tg-upload-title" id="upload-file-name">uploading...</div>
+              <div class="tg-upload-subtitle" id="upload-file-stats">0 MB / 0 MB</div>
+              <div class="tg-progress-bar"><div class="tg-progress-fill" id="upload-progress-fill" style="width: 0%"></div></div>
+            </div>
+            <button id="upload-cancel-btn" class="tg-icon-btn small">✕</button>
           </div>
         </div>
 
-        <!-- INPUT BAR -->
-        <footer class="input-bar">
+        <!-- TELEGRAM ICONIC COMPOSER FOOTER -->
+        <footer class="tg-composer">
           <input type="file" id="file-input" style="display: none">
-          <button id="btn-attach" class="icon-btn" title="Прикрепить фото, видео или файл (до 1 ТБ)">📎</button>
-          <div class="input-wrapper">
-            <textarea id="message-input" placeholder="Напишите сообщение..." rows="1"></textarea>
+          
+          <!-- ATTACH CLIP -->
+          <button id="btn-attach" class="tg-composer-btn" title="Прикрепить">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path fill="currentColor" d="M16.5 6v11.5c0 2.21-1.79 4-4 4s-4-1.79-4-4V5a2.5 2.5 0 0 1 5 0v10.5c0 .83-.67 1.5-1.5 1.5s-1.5-.67-1.5-1.5V6H9v9.5a3 3 0 0 0 6 0V5a4 4 0 0 0-8 0v12.5c0 3.04 2.46 5.5 5.5 5.5s5.5-2.46 5.5-5.5V6h-1.5z"/>
+            </svg>
+          </button>
+
+          <!-- TEXT INPUT -->
+          <div class="tg-input-wrapper">
+            <textarea id="message-input" placeholder="Написать сообщение..." rows="1"></textarea>
           </div>
-          <button id="btn-send" class="btn send-btn" title="Отправить">➔</button>
+
+          <!-- EMOJI BUTTON -->
+          <button id="btn-emoji" class="tg-composer-btn" title="Смайлики">
+            <svg viewBox="0 0 24 24" width="22" height="22">
+              <path fill="currentColor" d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm3.5-9c.83 0 1.5-.67 1.5-1.5S16.33 8 15.5 8 14 8.67 14 9.5s.67 1.5 1.5 1.5zm-7 0c.83 0 1.5-.67 1.5-1.5S9.33 8 8.5 8 7 8.67 7 9.5 7.67 11 8.5 11zm3.5 6.5c2.33 0 4.31-1.46 5.11-3.5H6.89c.8 2.04 2.78 3.5 5.11 3.5z"/>
+            </svg>
+          </button>
+
+          <!-- TELEGRAM SEND BUTTON (AIRPLANE) -->
+          <button id="btn-send" class="tg-send-btn" title="Отправить">
+            <svg class="send-plane-icon" viewBox="0 0 24 24" width="22" height="22">
+              <path fill="currentColor" d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/>
+            </svg>
+          </button>
         </footer>
       </main>
     </div>
   </div>
 
   <!-- LIGHTBOX MODAL FOR IMAGES -->
-  <div id="lightbox-modal" class="lightbox-modal hidden">
-    <div class="lightbox-backdrop"></div>
-    <div class="lightbox-content">
-      <div class="lightbox-header">
-        <span id="lightbox-title" class="lightbox-title">Просмотр фото</span>
-        <div class="lightbox-actions">
-          <button id="lightbox-download-btn" class="btn-lightbox" title="Скачать">⬇ Скачать</button>
-          <button id="lightbox-close-btn" class="btn-lightbox close-btn" title="Закрыть">✕</button>
+  <div id="lightbox-modal" class="tg-lightbox hidden">
+    <div class="tg-lightbox-backdrop"></div>
+    <div class="tg-lightbox-container">
+      <div class="tg-lightbox-topbar">
+        <span id="lightbox-title" class="tg-lightbox-title">Фото</span>
+        <div class="tg-lightbox-btns">
+          <button id="lightbox-download-btn" class="tg-lightbox-action-btn" title="Скачать">
+            <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            <span>Скачать</span>
+          </button>
+          <button id="lightbox-close-btn" class="tg-lightbox-action-btn close" title="Закрыть">✕</button>
         </div>
       </div>
-      <div class="lightbox-body">
-        <img id="lightbox-img" src="" alt="Full view">
+      <div class="tg-lightbox-image-wrap">
+        <img id="lightbox-img" src="" alt="Full preview">
       </div>
     </div>
   </div>
