@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+  <meta name="theme-color" content="#0f0f1a">
+  <title>Clash Arena</title>
+  <link rel="stylesheet" href="style.css">
+  <script async src="/sdk.js" onload="window.initYandexSDK && window.initYandexSDK()"></script>
+</head>
+<body>
+  <main id="app" aria-label="Clash Arena battle game">
+    <canvas id="game" width="720" height="1280"></canvas>
+    <section id="panel">
+      <h1 id="title">Clash Arena</h1>
+      <p id="subtitle">Карточная битва в реальном времени. Выставляй войска на арену и уничтожай башни!</p>
+      <button id="primary" type="button">В бой</button>
+      <p id="hint"></p>
+    </section>
+  </main>
+  <script src="game.js?v=5"></script>
+</body>
+</html>
