@@ -1,5 +1,5 @@
 // ===================================================
-// GLOBAL MESSENGER — EXACT FORMAT BIT-FOR-BIT ENGINE
+// GLOBAL MESSENGER — FULL ENGINE WITH SEARCH & DIALOGS
 // ===================================================
 
 class GlobalMessenger {
@@ -21,13 +21,20 @@ class GlobalMessenger {
     this.renderedMessageIds = new Set();
     this.activeLightboxData = null;
 
+    // Chat list, search & contact architecture
+    this.chats = [];
+    this.frequentUsers = [];
+    this.recentSearches = [];
+    this.knownUsers = new Set();
+    this.searchMode = false;
+    this.searchQuery = '';
+
     this.clearOldCaches();
     this.initElements();
     this.initEvents();
     this.restoreSession();
   }
 
-  // Clear stale Service Worker and CacheStorage caches
   clearOldCaches() {
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(regs => {
@@ -51,12 +58,26 @@ class GlobalMessenger {
       authStatus: document.getElementById('auth-status'),
 
       mainScreen: document.getElementById('main-screen'),
+      sidebar: document.getElementById('sidebar'),
       currentUserAvatar: document.getElementById('current-user-avatar'),
       currentUserName: document.getElementById('current-user-name'),
       btnLogout: document.getElementById('btn-logout'),
       btnNewChat: document.getElementById('btn-new-chat'),
+
+      chatSearch: document.getElementById('chat-search'),
+      btnSearchClear: document.getElementById('btn-search-clear'),
+      frequentUsersSection: document.getElementById('frequent-users-section'),
+      frequentCarousel: document.getElementById('frequent-carousel'),
+      searchHistorySection: document.getElementById('search-history-section'),
+      searchHistoryList: document.getElementById('search-history-list'),
+      btnClearSearchHistory: document.getElementById('btn-clear-search-history'),
+      searchResultsSection: document.getElementById('search-results-section'),
+      localResultsList: document.getElementById('local-results-list'),
+      globalResultsList: document.getElementById('global-results-list'),
       chatList: document.getElementById('chat-list'),
 
+      chatView: document.querySelector('.chat-view'),
+      btnBack: document.getElementById('btn-back'),
       activeChatAvatar: document.getElementById('active-chat-avatar'),
       activeChatTitle: document.getElementById('active-chat-title'),
       activeChatStatus: document.getElementById('active-chat-status'),
@@ -105,24 +126,42 @@ class GlobalMessenger {
     this.el.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
 
     this.el.btnNewChat.addEventListener('click', () => {
-      const username = prompt('Введите @username собеседника:');
-      if (username) {
-        const clean = username.replace('@', '').trim().toLowerCase();
-        this.openChat('dm:' + clean, '@' + clean);
+      this.el.chatSearch.focus();
+      this.handleSearchFocus();
+    });
+
+    // SEARCH EVENTS
+    this.el.chatSearch.addEventListener('focus', () => this.handleSearchFocus());
+    this.el.chatSearch.addEventListener('input', () => this.handleSearchInput(this.el.chatSearch.value));
+    this.el.btnSearchClear.addEventListener('click', () => this.closeSearch());
+    this.el.btnClearSearchHistory.addEventListener('click', () => {
+      this.recentSearches = [];
+      this.saveUserStorage();
+      this.renderSearchHistory();
+    });
+
+    // MOBILE BACK BUTTON
+    this.el.btnBack.addEventListener('click', () => {
+      if (this.el.chatView) this.el.chatView.classList.remove('active');
+    });
+
+    // ESCAPE KEY
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (!this.el.lightboxModal.classList.contains('hidden')) {
+          this.closeLightbox();
+        } else if (this.searchMode) {
+          this.closeSearch();
+        }
       }
     });
 
+    // LIGHTBOX EVENTS
     this.el.lightboxCloseBtn.addEventListener('click', () => this.closeLightbox());
     this.el.lightboxModal.querySelector('.lightbox-backdrop').addEventListener('click', () => this.closeLightbox());
     this.el.lightboxDownloadBtn.addEventListener('click', () => {
       if (this.activeLightboxData) {
         this.downloadMedia(this.activeLightboxData.url, this.activeLightboxData.name);
-      }
-    });
-
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !this.el.lightboxModal.classList.contains('hidden')) {
-        this.closeLightbox();
       }
     });
   }
@@ -197,6 +236,11 @@ class GlobalMessenger {
     this.el.mainScreen.classList.remove('hidden');
     this.el.currentUserName.innerText = '@' + this.user.username;
     this.el.currentUserAvatar.innerText = this.user.username[0].toUpperCase();
+    this.el.currentUserAvatar.style.background = this.getAvatarGradient(this.user.username);
+
+    this.loadUserStorage();
+    this.renderFrequentUsers();
+    this.renderChatList();
     this.startPolling();
   }
 
@@ -213,14 +257,435 @@ class GlobalMessenger {
     this.el.authPassword.value = '';
   }
 
-  openChat(chatId, title) {
+  // ===================================================
+  // CHAT LIST, FREQUENT USERS & STORAGE ENGINE
+  // ===================================================
+
+  getDmChatId(u1, u2) {
+    if (!u1 || !u2) return 'dm:general';
+    const sorted = [u1.trim().toLowerCase(), u2.trim().toLowerCase()].sort();
+    return 'dm:' + sorted.join(':');
+  }
+
+  getAvatarGradient(str) {
+    if (!str || str === 'general' || str === 'Общий чат') return 'linear-gradient(135deg, #3390ec, #1f69b3)';
+    const gradients = [
+      'linear-gradient(135deg, #e17076, #ff885e)',
+      'linear-gradient(135deg, #faa357, #f68136)',
+      'linear-gradient(135deg, #3390ec, #0077d7)',
+      'linear-gradient(135deg, #a695e7, #856be2)',
+      'linear-gradient(135deg, #7bc862, #53a73c)',
+      'linear-gradient(135deg, #6dc9cb, #3caab2)',
+      'linear-gradient(135deg, #ee7aae, #d8508e)'
+    ];
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) hash = (hash << 5) - hash + str.charCodeAt(i);
+    return gradients[Math.abs(hash) % gradients.length];
+  }
+
+  loadUserStorage() {
+    if (!this.user) return;
+    const uid = this.user.username.toLowerCase();
+
+    // 1. Chats
+    try {
+      const savedChats = localStorage.getItem('gm_chats_' + uid);
+      this.chats = savedChats ? JSON.parse(savedChats) : [];
+    } catch (e) {
+      this.chats = [];
+    }
+    if (!this.chats.some(c => c.id === 'dm:general')) {
+      this.chats.unshift({
+        id: 'dm:general',
+        title: 'Общий чат',
+        isGeneral: true,
+        lastMsg: 'Добро пожаловать в мессенджер',
+        lastTime: '',
+        lastTimestamp: 0
+      });
+    }
+
+    // 2. Frequent users
+    try {
+      const savedFreq = localStorage.getItem('gm_frequent_' + uid);
+      this.frequentUsers = savedFreq ? JSON.parse(savedFreq) : [];
+    } catch (e) {
+      this.frequentUsers = [];
+    }
+
+    // 3. Recent searches
+    try {
+      const savedRecents = localStorage.getItem('gm_recent_searches_' + uid);
+      this.recentSearches = savedRecents ? JSON.parse(savedRecents) : [];
+    } catch (e) {
+      this.recentSearches = [];
+    }
+
+    // Populate known users registry
+    this.knownUsers = new Set();
+    this.frequentUsers.forEach(f => this.knownUsers.add(f.username.toLowerCase()));
+    this.recentSearches.forEach(r => this.knownUsers.add(r.toLowerCase()));
+    this.chats.forEach(c => {
+      if (c.targetUser) this.knownUsers.add(c.targetUser.toLowerCase());
+    });
+  }
+
+  saveUserStorage() {
+    if (!this.user) return;
+    const uid = this.user.username.toLowerCase();
+    localStorage.setItem('gm_chats_' + uid, JSON.stringify(this.chats));
+    localStorage.setItem('gm_frequent_' + uid, JSON.stringify(this.frequentUsers));
+    localStorage.setItem('gm_recent_searches_' + uid, JSON.stringify(this.recentSearches));
+  }
+
+  recordUserInteraction(targetUser) {
+    if (!targetUser) return;
+    const clean = targetUser.replace('@', '').trim().toLowerCase();
+    if (!clean || (this.user && clean === this.user.username.toLowerCase())) return;
+
+    this.knownUsers.add(clean);
+
+    // Update frequent users
+    const existing = this.frequentUsers.find(f => f.username.toLowerCase() === clean);
+    if (existing) {
+      existing.count = (existing.count || 1) + 1;
+      existing.lastTime = Date.now();
+    } else {
+      this.frequentUsers.push({ username: clean, count: 1, lastTime: Date.now() });
+    }
+    this.frequentUsers.sort((a, b) => (b.count * 1000 + b.lastTime) - (a.count * 1000 + a.lastTime));
+    if (this.frequentUsers.length > 20) this.frequentUsers = this.frequentUsers.slice(0, 20);
+
+    // Update recent searches
+    this.recentSearches = [clean, ...this.recentSearches.filter(u => u.toLowerCase() !== clean)].slice(0, 15);
+
+    this.saveUserStorage();
+    this.renderFrequentUsers();
+  }
+
+  openChatWithUser(targetUsername) {
+    const clean = targetUsername.replace('@', '').trim().toLowerCase();
+    if (!clean) return;
+    const chatId = this.getDmChatId(this.user.username, clean);
+    const title = '@' + clean;
+
+    this.recordUserInteraction(clean);
+
+    let chat = this.chats.find(c => c.id === chatId);
+    if (!chat) {
+      chat = {
+        id: chatId,
+        title,
+        targetUser: clean,
+        lastMsg: 'Диалог начат',
+        lastTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        lastTimestamp: Date.now()
+      };
+      this.chats.splice(1, 0, chat);
+    }
+
+    this.saveUserStorage();
+    this.closeSearch();
+    this.renderChatList();
+    this.openChat(chatId, title, clean);
+  }
+
+  openChat(chatId, title, targetUser = null) {
     this.currentChatId = chatId;
     this.lastSeq = 0;
     this.renderedMessageIds.clear();
     this.el.activeChatTitle.innerText = title;
+
+    if (chatId === 'dm:general') {
+      this.el.activeChatAvatar.innerText = '🌐';
+      this.el.activeChatAvatar.style.background = 'linear-gradient(135deg, #3390ec, #1f69b3)';
+      this.el.activeChatStatus.innerText = 'в сети';
+    } else {
+      const u = targetUser || title.replace('@', '');
+      this.el.activeChatAvatar.innerText = (u[0] || '?').toUpperCase();
+      this.el.activeChatAvatar.style.background = this.getAvatarGradient(u);
+      this.el.activeChatStatus.innerText = 'в сети';
+    }
+
     this.el.messagesFeed.innerHTML = '';
+    this.renderChatList();
+
+    if (this.el.chatView) this.el.chatView.classList.add('active');
     this.syncMessages();
   }
+
+  renderFrequentUsers() {
+    const carousel = this.el.frequentCarousel;
+    if (!carousel) return;
+    carousel.innerHTML = '';
+
+    let displayList = [...this.frequentUsers];
+    if (displayList.length === 0) {
+      this.chats.forEach(c => {
+        if (c.targetUser && !displayList.some(d => d.username === c.targetUser)) {
+          displayList.push({ username: c.targetUser });
+        }
+      });
+    }
+
+    if (displayList.length === 0) {
+      this.el.frequentUsersSection.classList.add('hidden');
+      return;
+    }
+    this.el.frequentUsersSection.classList.remove('hidden');
+
+    displayList.slice(0, 15).forEach(item => {
+      const u = item.username;
+      const initial = (u[0] || '?').toUpperCase();
+      const grad = this.getAvatarGradient(u);
+
+      const el = document.createElement('div');
+      el.className = 'frequent-item';
+      el.innerHTML = `
+        <div class="frequent-avatar-wrap">
+          <div class="frequent-avatar" style="background: ${grad}">${initial}</div>
+          <div class="frequent-status-dot"></div>
+        </div>
+        <span class="frequent-name">@${this.escapeHtml(u)}</span>
+      `;
+      el.addEventListener('click', () => {
+        this.openChatWithUser(u);
+      });
+      carousel.appendChild(el);
+    });
+  }
+
+  renderChatList() {
+    const list = this.el.chatList;
+    if (!list) return;
+    list.innerHTML = '';
+
+    this.chats.forEach(chat => {
+      const isActive = chat.id === this.currentChatId;
+      const item = document.createElement('div');
+      item.className = 'chat-item' + (isActive ? ' active' : '');
+      item.setAttribute('data-chat-id', chat.id);
+
+      let avatarHtml = '';
+      if (chat.isGeneral) {
+        avatarHtml = '<div class="avatar general-avatar">🌐</div>';
+      } else {
+        const u = chat.targetUser || chat.title.replace('@', '');
+        const initial = u ? u[0].toUpperCase() : '?';
+        avatarHtml = `<div class="avatar" style="background: ${this.getAvatarGradient(u)}">${initial}</div>`;
+      }
+
+      item.innerHTML = `
+        ${avatarHtml}
+        <div class="chat-item-meta">
+          <div class="chat-item-top">
+            <span class="chat-title">${this.escapeHtml(chat.title)}</span>
+            <span class="chat-time">${this.escapeHtml(chat.lastTime || '')}</span>
+          </div>
+          <div class="chat-preview">${this.escapeHtml(chat.lastMsg || 'Нажмите, чтобы начать общение')}</div>
+        </div>
+      `;
+
+      item.addEventListener('click', () => {
+        this.openChat(chat.id, chat.title, chat.targetUser);
+      });
+
+      list.appendChild(item);
+    });
+  }
+
+  // ===================================================
+  // 2-TIER SEARCH & RECENT SEARCH HISTORY
+  // ===================================================
+
+  handleSearchFocus() {
+    this.searchMode = true;
+    if (!this.el.chatSearch.value.trim()) {
+      this.el.btnSearchClear.classList.remove('hidden');
+      this.el.frequentUsersSection.classList.remove('hidden');
+      this.el.searchHistorySection.classList.remove('hidden');
+      this.el.searchResultsSection.classList.add('hidden');
+      this.el.chatList.classList.add('hidden');
+      this.renderFrequentUsers();
+      this.renderSearchHistory();
+    } else {
+      this.handleSearchInput(this.el.chatSearch.value);
+    }
+  }
+
+  renderSearchHistory() {
+    const list = this.el.searchHistoryList;
+    if (!list) return;
+    list.innerHTML = '';
+
+    if (this.recentSearches.length === 0) {
+      list.innerHTML = '<div class="empty-search-hint">Нет недавних поисков</div>';
+      return;
+    }
+
+    this.recentSearches.forEach(u => {
+      const initial = (u[0] || '?').toUpperCase();
+      const grad = this.getAvatarGradient(u);
+
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.innerHTML = `
+        <div class="avatar" style="width:38px;height:38px;font-size:15px;background:${grad}">${initial}</div>
+        <div class="history-item-meta">
+          <div class="history-title">@${this.escapeHtml(u)}</div>
+          <div class="history-subtitle">Недавний контакт</div>
+        </div>
+        <button class="history-remove-btn" title="Удалить из истории">✕</button>
+      `;
+
+      item.addEventListener('click', (e) => {
+        if (e.target.closest('.history-remove-btn')) return;
+        this.openChatWithUser(u);
+      });
+
+      item.querySelector('.history-remove-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.recentSearches = this.recentSearches.filter(x => x.toLowerCase() !== u.toLowerCase());
+        this.saveUserStorage();
+        this.renderSearchHistory();
+      });
+
+      list.appendChild(item);
+    });
+  }
+
+  createSearchResultElement(username, subtitle) {
+    const clean = username.replace('@', '');
+    const initial = (clean[0] || '?').toUpperCase();
+    const grad = this.getAvatarGradient(clean);
+
+    const el = document.createElement('div');
+    el.className = 'search-result-item';
+    el.innerHTML = `
+      <div class="avatar" style="width:38px;height:38px;font-size:15px;background:${grad}">${initial}</div>
+      <div class="search-item-meta">
+        <div class="search-item-title">@${this.escapeHtml(clean)}</div>
+        <div class="search-item-sub">${this.escapeHtml(subtitle)}</div>
+      </div>
+    `;
+    el.addEventListener('click', () => {
+      this.openChatWithUser(clean);
+    });
+    return el;
+  }
+
+  handleSearchInput(q) {
+    q = q.trim().toLowerCase().replace(/^@/, '');
+    this.searchQuery = q;
+    this.searchMode = true;
+
+    if (!q) {
+      this.handleSearchFocus();
+      return;
+    }
+
+    this.el.btnSearchClear.classList.remove('hidden');
+    this.el.frequentUsersSection.classList.add('hidden');
+    this.el.searchHistorySection.classList.add('hidden');
+    this.el.searchResultsSection.classList.remove('hidden');
+    this.el.chatList.classList.add('hidden');
+
+    const seenUsers = new Set();
+    const localMatches = [];
+
+    // Tier 1: Search among close contacts & active chats
+    this.frequentUsers.forEach(f => {
+      const u = f.username.toLowerCase();
+      if (u.includes(q) && !seenUsers.has(u)) {
+        seenUsers.add(u);
+        localMatches.push({ username: f.username, type: 'Близкий контакт' });
+      }
+    });
+
+    this.chats.forEach(c => {
+      if (c.targetUser) {
+        const u = c.targetUser.toLowerCase();
+        if (u.includes(q) && !seenUsers.has(u)) {
+          seenUsers.add(u);
+          localMatches.push({ username: c.targetUser, type: 'Существующий чат' });
+        }
+      }
+    });
+
+    this.recentSearches.forEach(r => {
+      const u = r.toLowerCase();
+      if (u.includes(q) && !seenUsers.has(u)) {
+        seenUsers.add(u);
+        localMatches.push({ username: r, type: 'Недавний контакт' });
+      }
+    });
+
+    const localList = this.el.localResultsList;
+    localList.innerHTML = '';
+    const localGroup = document.getElementById('local-results-group');
+    if (localMatches.length > 0) {
+      localGroup.classList.remove('hidden');
+      localMatches.forEach(m => {
+        localList.appendChild(this.createSearchResultElement(m.username, m.type));
+      });
+    } else {
+      localGroup.classList.add('hidden');
+    }
+
+    // Tier 2: Global Search (known users & direct chat option)
+    const globalMatches = [];
+    this.knownUsers.forEach(u => {
+      if (u.includes(q) && !seenUsers.has(u)) {
+        seenUsers.add(u);
+        globalMatches.push(u);
+      }
+    });
+
+    const globalList = this.el.globalResultsList;
+    globalList.innerHTML = '';
+
+    // If query >= 2 characters, offer direct message
+    if (!seenUsers.has(q) && q.length >= 2) {
+      const directEl = document.createElement('div');
+      directEl.className = 'search-result-item';
+      directEl.innerHTML = `
+        <div class="avatar" style="width:38px;height:38px;font-size:15px;background:${this.getAvatarGradient(q)}">@</div>
+        <div class="search-item-meta">
+          <div class="search-item-title">@${this.escapeHtml(q)}</div>
+          <div class="search-item-sub" style="color:var(--accent);font-weight:600;">Начать новый диалог</div>
+        </div>
+      `;
+      directEl.addEventListener('click', () => {
+        this.openChatWithUser(q);
+      });
+      globalList.appendChild(directEl);
+    }
+
+    globalMatches.forEach(u => {
+      globalList.appendChild(this.createSearchResultElement(u, 'Пользователь сети'));
+    });
+
+    if (globalList.children.length === 0 && localMatches.length === 0) {
+      globalList.innerHTML = `<div class="empty-search-hint">По запросу «${this.escapeHtml(q)}» ничего не найдено</div>`;
+    }
+  }
+
+  closeSearch() {
+    this.searchMode = false;
+    this.searchQuery = '';
+    this.el.chatSearch.value = '';
+    this.el.btnSearchClear.classList.add('hidden');
+    this.el.searchHistorySection.classList.add('hidden');
+    this.el.searchResultsSection.classList.add('hidden');
+    this.el.frequentUsersSection.classList.remove('hidden');
+    this.el.chatList.classList.remove('hidden');
+    this.renderFrequentUsers();
+    this.renderChatList();
+  }
+
+  // ===================================================
+  // MESSAGING & EXACT FORMAT STORAGE
+  // ===================================================
 
   async sendTextMessage() {
     const text = this.el.messageInput.value.trim();
@@ -251,11 +716,6 @@ class GlobalMessenger {
     }
   }
 
-  // ===================================================
-  // EXACT FORMAT SERVER STORAGE (BIT-FOR-BIT)
-  // ===================================================
-
-  // Fast native C++ base64 encoding without memory limits
   readFileAsBase64(file) {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -269,7 +729,6 @@ class GlobalMessenger {
     });
   }
 
-  // Upload original binary uncompressed file directly to repository storage
   async uploadFileToServer(file, onProgress) {
     onProgress(20, 'Кодирование исходных байтов...');
     const base64Content = await this.readFileAsBase64(file);
@@ -300,7 +759,6 @@ class GlobalMessenger {
     }
 
     onProgress(100, 'Готово!');
-    // Direct Fastly CDN streaming URL with full HTTP 206 Partial Content support
     return `https://raw.githubusercontent.com/${this.config.REPO_OWNER}/${this.config.REPO_NAME}/main/${serverPath}`;
   }
 
@@ -323,13 +781,11 @@ class GlobalMessenger {
     this.el.uploadFileStats.innerText = 'Подготовка...';
 
     try {
-      // 1. Upload original uncompressed file to server
       const fileUrl = await this.uploadFileToServer(file, (pct, statusText) => {
         this.el.uploadProgressFill.style.width = pct + '%';
         this.el.uploadFileStats.innerText = `${statusText} (${pct}%)`;
       });
 
-      // 2. Build message payload with real server URL (NO data:image/jpeg fake previews!)
       const messageText = this.el.messageInput.value.trim();
       this.el.messageInput.value = '';
 
@@ -378,22 +834,20 @@ class GlobalMessenger {
     if (isOptimistic) bubble.style.opacity = '0.75';
 
     let contentHtml = '';
-    const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = new Date(msg.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const checkmarks = isOutgoing ? '<span class="tg-checkmarks">✓✓</span>' : '';
 
     if (msg.content && msg.content.file) {
       const f = msg.content.file;
       const isVideo = (f.mimeType && f.mimeType.startsWith('video/')) || /\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(f.name);
       const isImage = (f.mimeType && f.mimeType.startsWith('image/')) || /\.(jpe?g|png|webp|gif|svg)$/i.test(f.name);
-      
-      // Real streaming URL (filter out old corrupted data:image on video)
+
       let streamUrl = f.url || '';
       if (isVideo && streamUrl.startsWith('data:image/')) streamUrl = '';
       let downloadTarget = f.downloadUrl || f.url || '';
       if (isVideo && downloadTarget.startsWith('data:image/')) downloadTarget = '';
 
       if (isVideo) {
-        // FULL FORMAT VIDEO PLAYER DIRECTLY IN CHAT STREAM (NO FAKE PREVIEW)
         contentHtml = `
           <div class="tg-video-card">
             <video controls playsinline preload="metadata" src="${this.escapeHtml(streamUrl)}"></video>
@@ -408,7 +862,6 @@ class GlobalMessenger {
           ${msg.content.text ? '<div class="tg-msg-text" style="margin-top:4px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
         `;
       } else if (isImage) {
-        // FULL FORMAT PHOTO WITH BORDERLESS VIEW & LIGHTBOX
         const imgUrl = f.url || f.previewUrl || '';
         contentHtml = `
           <div class="tg-photo-card" data-url="${this.escapeHtml(imgUrl)}" data-name="${this.escapeHtml(f.name)}">
@@ -421,7 +874,6 @@ class GlobalMessenger {
           ${msg.content.text ? '<div class="tg-msg-text" style="margin-top:4px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
         `;
       } else {
-        // TELEGRAM CIRCULAR FILE DOCUMENT CARD
         contentHtml = `
           <div class="tg-doc-item">
             <div class="tg-doc-round-btn btn-dl-action" data-url="${this.escapeHtml(f.url)}" data-name="${this.escapeHtml(f.name)}" title="Скачать">
@@ -471,6 +923,50 @@ class GlobalMessenger {
 
     this.el.messagesFeed.appendChild(bubble);
     this.el.messagesContainer.scrollTop = this.el.messagesContainer.scrollHeight;
+
+    // UPDATE CHAT SNIPPET IN SIDEBAR LIST
+    let snippet = 'Новое сообщение';
+    if (msg.content && msg.content.file) {
+      const f = msg.content.file;
+      const isV = (f.mimeType && f.mimeType.startsWith('video/')) || /\.(mp4|webm|mov|mkv|avi|m4v)$/i.test(f.name);
+      const isI = (f.mimeType && f.mimeType.startsWith('image/')) || /\.(jpe?g|png|webp|gif|svg)$/i.test(f.name);
+      if (isV) snippet = '🎬 Видео';
+      else if (isI) snippet = '📷 Фото';
+      else snippet = '📁 ' + (f.name || 'Документ');
+    } else if (msg.content && msg.content.text) {
+      snippet = msg.content.text;
+    }
+    if (snippet.length > 35) snippet = snippet.slice(0, 35) + '...';
+
+    let chat = this.chats.find(c => c.id === this.currentChatId);
+    if (!chat) {
+      const isGen = this.currentChatId === 'dm:general';
+      chat = {
+        id: this.currentChatId,
+        title: isGen ? 'Общий чат' : this.el.activeChatTitle.innerText,
+        isGeneral: isGen,
+        lastMsg: snippet,
+        lastTime: time,
+        lastTimestamp: Date.now()
+      };
+      this.chats.push(chat);
+    } else {
+      chat.lastMsg = snippet;
+      chat.lastTime = time;
+      chat.lastTimestamp = Date.now();
+    }
+
+    if (msg.senderUsername && msg.senderUsername !== this.user.username) {
+      this.knownUsers.add(msg.senderUsername.toLowerCase());
+    }
+
+    // Sort chats: general on top, others by recent activity
+    const gen = this.chats.filter(c => c.isGeneral);
+    const others = this.chats.filter(c => !c.isGeneral).sort((a, b) => (b.lastTimestamp || 0) - (a.lastTimestamp || 0));
+    this.chats = [...gen, ...others];
+
+    this.saveUserStorage();
+    if (!this.searchMode) this.renderChatList();
   }
 
   openLightbox(url, fileName) {
@@ -486,14 +982,12 @@ class GlobalMessenger {
     this.activeLightboxData = null;
   }
 
-  // Exact binary file download (Zero format corruption, no 0xc10100be)
   downloadMedia(url, fileName) {
     if (!url || url === '#' || url.startsWith('blob:tmp_')) {
       alert('Файл недоступен для скачивания');
       return;
     }
 
-    // Direct binary fetch to preserve exact byte sequence
     fetch(url)
       .then(resp => {
         if (!resp.ok) throw new Error('Ошибка скачивания: HTTP ' + resp.status);
