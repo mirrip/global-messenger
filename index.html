@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Global Messenger — Бессерверный PWA</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <meta name="theme-color" content="#121824">
+  <link rel="stylesheet" href="styles.css">
+  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='46' fill='%232563eb'/><path d='M30 52l12 12 28-28' stroke='white' stroke-width='8' fill='none' stroke-linecap='round' stroke-linejoin='round'/></svg>">
+</head>
+<body class="dark-theme">
+  <div id="app">
+    <!-- AUTH SCREEN -->
+    <div id="auth-screen" class="auth-wrapper">
+      <div class="auth-card">
+        <div class="brand">
+          <div class="brand-logo">🌐</div>
+          <h1>Global Messenger</h1>
+          <p class="subtitle">Бессерверный мессенджер нового поколения</p>
+        </div>
+
+        <div class="auth-tabs">
+          <button id="tab-login" class="tab-btn active">Вход</button>
+          <button id="tab-register" class="tab-btn">Регистрация</button>
+        </div>
+
+        <form id="auth-form" class="auth-form">
+          <div class="input-group">
+            <label for="auth-username">Имя пользователя</label>
+            <input type="text" id="auth-username" placeholder="@username" required autocomplete="username">
+          </div>
+
+          <div class="input-group">
+            <label for="auth-password">Пароль</label>
+            <input type="password" id="auth-password" placeholder="••••••••" required autocomplete="current-password">
+          </div>
+
+          <button type="submit" id="auth-submit-btn" class="btn primary-btn full-width">
+            Войти в систему
+          </button>
+        </form>
+
+        <div id="auth-status" class="status-msg"></div>
+
+        <div class="cloud-info">
+          <span>⚡ Sharded Google Sheets + CacheService</span>
+          <span>📁 Файлы до 1 ТБ через Google Drive</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- MAIN CHAT SCREEN -->
+    <div id="main-screen" class="main-wrapper hidden">
+      <!-- SIDEBAR -->
+      <aside class="sidebar">
+        <header class="sidebar-header">
+          <div class="user-profile">
+            <div class="avatar" id="current-user-avatar">?</div>
+            <div class="user-meta">
+              <div class="name" id="current-user-name">Загрузка...</div>
+              <div class="status-badge online">В сети</div>
+            </div>
+          </div>
+          <div class="header-actions">
+            <button id="btn-new-chat" class="icon-btn" title="Новый диалог">💬</button>
+            <button id="btn-settings" class="icon-btn" title="Настройки">⚙️</button>
+          </div>
+        </header>
+
+        <div class="search-box">
+          <input type="text" id="chat-search" placeholder="Поиск диалогов или @пользователей...">
+        </div>
+
+        <div class="chat-list" id="chat-list">
+          <div class="chat-item active" data-chat-id="dm:general">
+            <div class="avatar">🌐</div>
+            <div class="chat-item-meta">
+              <div class="chat-item-top">
+                <span class="chat-title">Общий канал</span>
+                <span class="chat-time" id="general-last-time">12:00</span>
+              </div>
+              <div class="chat-preview" id="general-last-msg">Нажмите, чтобы начать общение</div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CHAT VIEW -->
+      <main class="chat-view">
+        <header class="chat-header">
+          <button id="btn-back" class="icon-btn mobile-only">←</button>
+          <div class="chat-header-info">
+            <div class="chat-header-avatar" id="active-chat-avatar">🌐</div>
+            <div>
+              <h2 id="active-chat-title">Общий канал</h2>
+              <span class="chat-status" id="active-chat-status">Облачная синхронизация активна</span>
+            </div>
+          </div>
+          <div class="chat-header-actions">
+            <span id="failover-indicator" class="badge-tag success">Шард A (Hot)</span>
+            <button id="btn-logout" class="icon-btn" title="Выйти">🚪</button>
+          </div>
+        </header>
+
+        <!-- MESSAGES FEED -->
+        <div class="messages-container" id="messages-container">
+          <div class="date-divider">Сегодня</div>
+          <div class="msg-feed" id="messages-feed"></div>
+        </div>
+
+        <!-- UPLOAD PROGRESS OVERLAY -->
+        <div id="upload-progress-card" class="upload-progress-card hidden">
+          <div class="upload-info">
+            <div class="upload-icon">📦</div>
+            <div class="upload-details">
+              <div class="upload-name" id="upload-file-name">file.apk</div>
+              <div class="upload-stats" id="upload-file-stats">0 MB / 0 MB (0%)</div>
+            </div>
+            <button id="upload-cancel-btn" class="icon-btn small">✕</button>
+          </div>
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="upload-progress-fill" style="width: 0%"></div>
+          </div>
+        </div>
+
+        <!-- INPUT BAR -->
+        <footer class="input-bar">
+          <input type="file" id="file-input" style="display: none">
+          <button id="btn-attach" class="icon-btn" title="Прикрепить файл (до 1 ТБ)">📎</button>
+          <div class="input-wrapper">
+            <textarea id="message-input" placeholder="Напишите сообщение..." rows="1"></textarea>
+          </div>
+          <button id="btn-send" class="btn send-btn" title="Отправить">➔</button>
+        </footer>
+      </main>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
