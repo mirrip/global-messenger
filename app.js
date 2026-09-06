@@ -1,15 +1,15 @@
 /**
- * Global Messenger — High-Performance Client Logic
- * Features:
- * - Sub-300ms message delivery via CacheService
- * - Inline Photos with Lightbox Viewer & Download
- * - Inline Video Players with Controls & Download
- * - Generic File Cards with Direct Download Button
- * - 1 TB Resumable Chunked Streaming File Transfers
- * - Web Push FCM service worker support
+ * Global Messenger — Authentic Telegram Web Client Architecture
+ * Supports:
+ * - Sub-300ms real-time sync with RAM CacheService
+ * - Telegram outgoing/incoming message bubbles with tails, time & double checkmarks
+ * - Inline photos with click-to-zoom Lightbox and download badges
+ * - Inline HTML5 video players with download buttons
+ * - Telegram-style file document cards (APK, ZIP, PDF)
+ * - 1 TB chunked resumable file transfers via Google Drive
  */
 
-class GlobalMessenger {
+class TelegramMessenger {
   constructor() {
     this.config = window.GLOBAL_CONFIG;
     this.session = null;
@@ -18,7 +18,7 @@ class GlobalMessenger {
     this.lastSeq = 0;
     this.isPolling = false;
     this.pollTimer = null;
-    this.localBlobUrls = new Map(); // Store local Blob URLs for immediate high-res view
+    this.localBlobUrls = new Map();
     this.activeLightboxData = null;
 
     this.initElements();
@@ -38,8 +38,6 @@ class GlobalMessenger {
       authSubmitBtn: document.getElementById('auth-submit-btn'),
       tabLogin: document.getElementById('tab-login'),
       tabRegister: document.getElementById('tab-register'),
-      currentUserName: document.getElementById('current-user-name'),
-      currentUserAvatar: document.getElementById('current-user-avatar'),
       activeChatTitle: document.getElementById('active-chat-title'),
       messagesFeed: document.getElementById('messages-feed'),
       messagesContainer: document.getElementById('messages-container'),
@@ -70,6 +68,7 @@ class GlobalMessenger {
     this.el.authForm.addEventListener('submit', (e) => this.handleAuthSubmit(e));
     this.el.btnLogout.addEventListener('click', () => this.logout());
 
+    // Send on airplane click or Enter
     this.el.btnSend.addEventListener('click', () => this.sendTextMessage());
     this.el.messageInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
@@ -78,20 +77,28 @@ class GlobalMessenger {
       }
     });
 
+    // Auto-grow textarea
+    this.el.messageInput.addEventListener('input', () => {
+      this.el.messageInput.style.height = 'auto';
+      this.el.messageInput.style.height = Math.min(this.el.messageInput.scrollHeight, 120) + 'px';
+    });
+
+    // Attachment
     this.el.btnAttach.addEventListener('click', () => this.el.fileInput.click());
     this.el.fileInput.addEventListener('change', (e) => this.handleFileSelection(e));
 
+    // New chat prompt
     this.el.btnNewChat.addEventListener('click', () => {
-      const username = prompt('Введите @username собеседника для личного чата:');
+      const username = prompt('Введите @username собеседника:');
       if (username) {
         const clean = username.replace('@', '').trim().toLowerCase();
         this.openChat('dm:' + clean, '@' + clean);
       }
     });
 
-    // Lightbox events
+    // Lightbox modal close
     this.el.lightboxCloseBtn.addEventListener('click', () => this.closeLightbox());
-    this.el.lightboxModal.querySelector('.lightbox-backdrop').addEventListener('click', () => this.closeLightbox());
+    this.el.lightboxModal.querySelector('.tg-lightbox-backdrop').addEventListener('click', () => this.closeLightbox());
     this.el.lightboxDownloadBtn.addEventListener('click', () => {
       if (this.activeLightboxData) {
         this.downloadMedia(this.activeLightboxData.url, this.activeLightboxData.name);
@@ -103,7 +110,7 @@ class GlobalMessenger {
     this.authMode = mode;
     this.el.tabLogin.classList.toggle('active', mode === 'login');
     this.el.tabRegister.classList.toggle('active', mode === 'register');
-    this.el.authSubmitBtn.innerText = mode === 'login' ? 'Войти в систему' : 'Зарегистрироваться';
+    this.el.authSubmitBtn.innerText = mode === 'login' ? 'Войти' : 'Создать аккаунт';
     this.el.authStatus.innerText = '';
   }
 
@@ -115,7 +122,7 @@ class GlobalMessenger {
       body: postData
     });
     const data = await response.json();
-    if (!data.ok) throw new Error(data.error || 'Ошибка запроса');
+    if (!data.ok) throw new Error(data.error || 'Ошибка');
     return data.result;
   }
 
@@ -125,14 +132,14 @@ class GlobalMessenger {
     const password = this.el.authPassword.value;
 
     this.el.authSubmitBtn.disabled = true;
-    this.el.authStatus.className = 'status-msg';
-    this.el.authStatus.innerText = 'Подключение к Google Cloud...';
+    this.el.authStatus.className = 'tg-auth-status';
+    this.el.authStatus.innerText = 'Подключение к Telegram Cloud...';
 
     try {
       const result = await this.apiRequest(this.authMode, {
         username,
         password,
-        deviceName: navigator.userAgent.includes('Mobile') ? 'Мобильный телефон' : 'Компьютер'
+        deviceName: navigator.userAgent.includes('Mobile') ? 'Telegram Mobile' : 'Telegram Web'
       });
 
       this.session = result.session;
@@ -142,7 +149,7 @@ class GlobalMessenger {
 
       this.showMainScreen();
     } catch (err) {
-      this.el.authStatus.className = 'status-msg error';
+      this.el.authStatus.className = 'tg-auth-status error';
       this.el.authStatus.innerText = err.message;
     } finally {
       this.el.authSubmitBtn.disabled = false;
@@ -162,8 +169,6 @@ class GlobalMessenger {
   showMainScreen() {
     this.el.authScreen.classList.add('hidden');
     this.el.mainScreen.classList.remove('hidden');
-    this.el.currentUserName.innerText = '@' + this.user.username;
-    this.el.currentUserAvatar.innerText = this.user.username[0].toUpperCase();
     this.startPolling();
   }
 
@@ -191,8 +196,9 @@ class GlobalMessenger {
     if (!text) return;
 
     this.el.messageInput.value = '';
-    
-    // Optimistic local UI render
+    this.el.messageInput.style.height = 'auto';
+
+    // Optimistic Telegram message render
     const tempId = 'tmp_' + Date.now();
     this.appendMessage({
       messageId: tempId,
@@ -215,99 +221,90 @@ class GlobalMessenger {
     }
   }
 
-  // RENDER MESSAGE WITH INLINE PHOTOS, VIDEOS & DOWNLOAD BUTTONS
+  // TELEGRAM MESSAGE BUBBLE BUILDER
   appendMessage(msg, isOptimistic = false) {
     const isOutgoing = msg.senderUsername === this.user.username;
     const bubble = document.createElement('div');
-    bubble.className = 'message-bubble ' + (isOutgoing ? 'outgoing' : 'incoming');
-    if (isOptimistic) bubble.style.opacity = '0.7';
+    bubble.className = 'tg-msg ' + (isOutgoing ? 'outgoing' : 'incoming');
+    if (isOptimistic) bubble.style.opacity = '0.75';
 
     let contentHtml = '';
+    const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const checkmarks = isOutgoing ? '<span class="tg-checkmarks">✓✓</span>' : '';
+
     if (msg.content && msg.content.file) {
       const f = msg.content.file;
       const fileUrl = this.localBlobUrls.get(f.id) || f.url || this.buildDriveDownloadUrl(f);
       const isImage = f.mimeType.startsWith('image/') || /\.(jpe?g|png|webp|gif|svg)$/i.test(f.name);
       const isVideo = f.mimeType.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(f.name);
-      const isAudio = f.mimeType.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac)$/i.test(f.name);
 
       if (isImage) {
-        // 1. INLINE PHOTO WITH LIGHTBOX & DOWNLOAD BUTTON
+        // TELEGRAM PHOTO CARD
         contentHtml = `
-          <div class="media-container photo-preview" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
+          <div class="tg-media-wrap tg-photo-box" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
             <img src="${this.escapeHtml(fileUrl)}" alt="${this.escapeHtml(f.name)}" loading="lazy">
-            <div class="media-overlay-actions">
-              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать фото">
-                ⬇ Скачать
-              </button>
-            </div>
-          </div>
-          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
-        `;
-      } else if (isVideo) {
-        // 2. INLINE VIDEO PLAYER WITH DOWNLOAD BUTTON
-        contentHtml = `
-          <div class="media-container video-preview">
-            <video controls playsinline preload="metadata" src="${this.escapeHtml(fileUrl)}"></video>
-            <div class="video-bottom-bar">
-              <span class="video-title" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)} (${this.formatBytes(f.size)})</span>
-              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать видео">
-                ⬇ Скачать
-              </button>
-            </div>
-          </div>
-          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
-        `;
-      } else if (isAudio) {
-        // 3. INLINE AUDIO PLAYER WITH DOWNLOAD
-        contentHtml = `
-          <div class="media-container audio-preview">
-            <audio controls src="${this.escapeHtml(fileUrl)}"></audio>
-            <div class="video-bottom-bar">
-              <span class="video-title">${this.escapeHtml(f.name)}</span>
-              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать аудио">
-                ⬇ Скачать
-              </button>
-            </div>
-          </div>
-          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
-        `;
-      } else {
-        // 4. GENERIC DOCUMENT / APK / ARCHIVE CARD WITH EXPLICIT DOWNLOAD BUTTON
-        const icon = this.getFileIcon(f.name);
-        contentHtml = `
-          <div class="file-card">
-            <div class="file-card-icon">${icon}</div>
-            <div class="file-card-info">
-              <div class="file-card-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</div>
-              <div class="file-card-meta">${this.formatBytes(f.size)}</div>
-            </div>
-            <button class="file-card-dl-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать файл">
-              ⬇ Скачать
+            <button class="tg-media-dl-badge btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать фото">
+              <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+              <span>Скачать</span>
             </button>
           </div>
-          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+          ${msg.content.text ? '<div class="tg-msg-text" style="margin-top:4px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      } else if (isVideo) {
+        // TELEGRAM VIDEO PLAYER CARD
+        contentHtml = `
+          <div class="tg-media-wrap tg-video-box">
+            <video controls playsinline preload="metadata" src="${this.escapeHtml(fileUrl)}"></video>
+            <div class="tg-video-footer">
+              <span class="tg-video-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)} (${this.formatBytes(f.size)})</span>
+              <button class="tg-media-dl-badge btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать видео">
+                <svg viewBox="0 0 24 24" width="14" height="14"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                <span>Скачать</span>
+              </button>
+            </div>
+          </div>
+          ${msg.content.text ? '<div class="tg-msg-text" style="margin-top:4px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      } else {
+        // TELEGRAM CIRCULAR DOCUMENT / FILE CARD
+        contentHtml = `
+          <div class="tg-doc-card">
+            <div class="tg-doc-circle btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать">
+              <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+            </div>
+            <div class="tg-doc-details">
+              <div class="tg-doc-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</div>
+              <div class="tg-doc-size">${this.formatBytes(f.size)}</div>
+            </div>
+            <button class="tg-doc-dl-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
+              Скачать
+            </button>
+          </div>
+          ${msg.content.text ? '<div class="tg-msg-text" style="margin-top:4px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
         `;
       }
     } else {
-      contentHtml = `<div>${this.escapeHtml(msg.content ? msg.content.text : '')}</div>`;
+      contentHtml = `<div class="tg-msg-text">${this.escapeHtml(msg.content ? msg.content.text : '')}</div>`;
     }
 
-    const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     bubble.innerHTML = `
-      ${!isOutgoing ? '<div class="message-sender">@' + this.escapeHtml(msg.senderUsername) + '</div>' : ''}
+      ${!isOutgoing ? '<div class="tg-msg-sender">@' + this.escapeHtml(msg.senderUsername) + '</div>' : ''}
       ${contentHtml}
-      <div class="message-time">${time}</div>
+      <div class="tg-msg-meta">
+        <span>${time}</span>
+        ${checkmarks}
+      </div>
     `;
 
-    // Attach click events to inline elements
-    bubble.querySelectorAll('.photo-preview').forEach(el => {
+    // Click photo to zoom in Lightbox
+    bubble.querySelectorAll('.tg-photo-box').forEach(el => {
       el.addEventListener('click', (e) => {
         if (e.target.closest('.btn-dl-action')) return;
         this.openLightbox(el.getAttribute('data-url'), el.getAttribute('data-name'));
       });
     });
 
+    // Universal download handler
     bubble.querySelectorAll('.btn-dl-action').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -326,14 +323,6 @@ class GlobalMessenger {
     return f.url || '#';
   }
 
-  getFileIcon(name) {
-    if (/\.(zip|rar|7z|tar|gz)$/i.test(name)) return '🗜️';
-    if (/\.(apk|exe|dmg|msi)$/i.test(name)) return '📦';
-    if (/\.(pdf|docx?|xlsx?|pptx?|txt)$/i.test(name)) return '📄';
-    return '📁';
-  }
-
-  // LIGHTBOX LOGIC
   openLightbox(url, name) {
     this.activeLightboxData = { url, name };
     this.el.lightboxImg.src = url;
@@ -347,7 +336,6 @@ class GlobalMessenger {
     this.activeLightboxData = null;
   }
 
-  // UNIVERSAL FILE DOWNLOADER
   downloadMedia(url, fileName) {
     if (!url || url === '#') {
       alert('Файл подготавливается к скачиванию на сервере');
@@ -403,7 +391,6 @@ class GlobalMessenger {
       return;
     }
 
-    // Create local object URL for instant, high-speed preview
     const localBlobUrl = URL.createObjectURL(file);
 
     this.el.uploadCard.classList.remove('hidden');
@@ -411,7 +398,6 @@ class GlobalMessenger {
     this.el.uploadProgressFill.style.width = '0%';
 
     try {
-      // 1. Инициализируем сессию тяжелой загрузки
       const init = await this.apiRequest('initChunkedUpload', {
         sessionToken: this.session.sessionToken,
         fileName: file.name,
@@ -425,13 +411,11 @@ class GlobalMessenger {
       const chunkSize = this.config.CHUNK_SIZE_BYTES;
       const totalChunks = Math.ceil(file.size / chunkSize);
 
-      // Чанкованная потоковая загрузка
       for (let i = 0; i < totalChunks; i++) {
         const start = i * chunkSize;
         const end = Math.min(start + chunkSize, file.size);
         const chunk = file.slice(start, end);
 
-        // Обновление прогресса
         const pct = Math.round((end / file.size) * 100);
         this.el.uploadProgressFill.style.width = pct + '%';
         this.el.uploadFileStats.innerText = this.formatBytes(end) + ' / ' + this.formatBytes(file.size) + ' (' + pct + '%)';
@@ -439,14 +423,12 @@ class GlobalMessenger {
         await new Promise(r => setTimeout(r, 40));
       }
 
-      // Завершаем регистрацию файла в реестре Google Drive
       await this.apiRequest('finishChunkedUpload', {
         sessionToken: this.session.sessionToken,
         fileId: fileId,
         driveFileId: 'drv_' + fileId
       });
 
-      // Отправляем карточку медиафайла в чат
       await this.apiRequest('send', {
         sessionToken: this.session.sessionToken,
         chatId: this.currentChatId,
@@ -465,7 +447,7 @@ class GlobalMessenger {
       this.el.uploadCard.classList.add('hidden');
       this.syncMessages();
     } catch (err) {
-      alert('Ошибка при загрузке файла: ' + err.message);
+      alert('Ошибка при отправке файла: ' + err.message);
       this.el.uploadCard.classList.add('hidden');
     }
   }
@@ -488,14 +470,14 @@ class GlobalMessenger {
     if ('serviceWorker' in navigator) {
       try {
         await navigator.serviceWorker.register('sw.js');
-        console.log('[PWA] Service Worker registered');
+        console.log('[Telegram PWA] Service Worker registered');
       } catch (e) {
-        console.warn('[PWA] SW Registration failed:', e);
+        console.warn('[Telegram PWA] SW Registration error:', e);
       }
     }
   }
 }
 
 window.addEventListener('DOMContentLoaded', () => {
-  window.messenger = new GlobalMessenger();
+  window.telegramApp = new TelegramMessenger();
 });
