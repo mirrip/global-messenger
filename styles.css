@@ -1,23 +1,29 @@
 /* ===================================================
-   AUTHENTIC TELEGRAM DARK THEME STYLES (WEB A / K)
+   GLOBAL MESSENGER — RESTORED SIDEBAR + TELEGRAM CHAT
    =================================================== */
 
 :root {
-  --tg-bg-page: #0e1621;
-  --tg-bg-sidebar: #17212b;
-  --tg-bg-sidebar-hover: #202b36;
-  --tg-bg-chat: #0e1621;
-  --tg-bg-header: #17212b;
-  --tg-bg-msg-in: #182533;
-  --tg-bg-msg-out: #2b5278;
-  --tg-bg-composer: #17212b;
-  --tg-accent: #2aabee;
-  --tg-accent-hover: #2299d9;
-  --tg-text-primary: #f5f5f5;
-  --tg-text-secondary: #7f91a4;
-  --tg-text-sender: #5288c1;
-  --tg-border: rgba(0, 0, 0, 0.25);
-  --tg-badge: #2481cc;
+  /* Sidebar and general palette */
+  --bg-main: #0e1621;
+  --bg-sidebar: #17212b;
+  --bg-sidebar-hover: #202b36;
+  --bg-card: #151c28;
+  --bg-header: #17212b;
+  --border: #232e42;
+  --text-primary: #f5f5f5;
+  --text-secondary: #7f91a4;
+  --accent: #2aabee;
+  --accent-hover: #2299d9;
+  --success: #10b981;
+  --danger: #ef4444;
+
+  /* Telegram Chat Bubble Colors */
+  --tg-chat-bg: #0e1621;
+  --tg-msg-in: #182533;
+  --tg-msg-out: #2b5278;
+  --tg-sender-name: #5288c1;
+  --tg-time-in: #7f91a4;
+  --tg-time-out: #8faec9;
   --tg-check: #4fae4e;
 }
 
@@ -32,10 +38,9 @@
 body, html {
   height: 100%;
   width: 100%;
-  background-color: var(--tg-bg-page);
-  color: var(--tg-text-primary);
+  background-color: var(--bg-main);
+  color: var(--text-primary);
   overflow: hidden;
-  user-select: none;
 }
 
 #app {
@@ -49,60 +54,62 @@ body, html {
 }
 
 /* ===================================================
-   AUTH SCREEN (TELEGRAM DESIGN)
+   AUTH SCREEN
    =================================================== */
-.tg-auth-wrapper {
+.auth-wrapper {
   flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 16px;
   background: radial-gradient(circle at 50% 30%, #1c2b3d 0%, #0e1621 100%);
-  padding: 20px;
 }
 
-.tg-auth-card {
+.auth-card {
   width: 100%;
-  max-width: 380px;
-  text-align: center;
-  background: var(--tg-bg-sidebar);
+  max-width: 400px;
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
   border-radius: 16px;
-  padding: 40px 32px;
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 36px 28px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
 }
 
-.tg-logo-container .tg-icon {
-  width: 80px;
-  height: 80px;
-  margin-bottom: 20px;
+.brand {
+  text-align: center;
+  margin-bottom: 24px;
 }
 
-.tg-auth-card h2 {
+.brand-logo {
+  font-size: 48px;
+  margin-bottom: 8px;
+}
+
+.brand h1 {
   font-size: 22px;
-  font-weight: 600;
-  margin-bottom: 6px;
+  font-weight: 700;
 }
 
-.tg-subtitle {
-  color: var(--tg-text-secondary);
-  font-size: 14px;
-  margin-bottom: 28px;
+.subtitle {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-top: 4px;
 }
 
-.tg-auth-tabs {
+.auth-tabs {
   display: flex;
   background: #0e1621;
   border-radius: 10px;
   padding: 4px;
-  margin-bottom: 24px;
+  margin-bottom: 20px;
 }
 
-.tg-tab {
+.tab-btn {
   flex: 1;
-  padding: 8px;
+  padding: 9px;
   background: transparent;
   border: none;
-  color: var(--tg-text-secondary);
+  color: var(--text-secondary);
   font-weight: 600;
   border-radius: 8px;
   cursor: pointer;
@@ -110,306 +117,292 @@ body, html {
   font-size: 14px;
 }
 
-.tg-tab.active {
-  background: var(--tg-bg-sidebar);
-  color: var(--tg-text-primary);
+.tab-btn.active {
+  background: var(--bg-sidebar);
+  color: var(--text-primary);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 
-.tg-form {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
+.auth-form .input-group {
+  margin-bottom: 16px;
 }
 
-.tg-input-field {
-  position: relative;
-  text-align: left;
+.input-group label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  margin-bottom: 6px;
 }
 
-.tg-input-field input {
+.input-group input {
   width: 100%;
-  padding: 16px 14px 10px;
+  padding: 12px 14px;
   background: #0e1621;
-  border: 1.5px solid #242f3d;
+  border: 1px solid var(--border);
   border-radius: 10px;
-  color: var(--tg-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   outline: none;
   transition: border-color 0.2s;
 }
 
-.tg-input-field input:focus {
-  border-color: var(--tg-accent);
+.input-group input:focus {
+  border-color: var(--accent);
 }
 
-.tg-input-field label {
-  position: absolute;
-  top: 14px;
-  left: 14px;
-  font-size: 14px;
-  color: var(--tg-text-secondary);
-  pointer-events: none;
-  transition: 0.2s ease all;
-}
-
-.tg-input-field input:focus ~ label,
-.tg-input-field input:not(:placeholder-shown) ~ label {
-  top: 4px;
-  left: 14px;
-  font-size: 10px;
-  font-weight: 600;
-  color: var(--tg-accent);
-}
-
-.tg-btn.primary {
-  background: var(--tg-accent);
-  color: white;
-  padding: 13px;
+.btn {
+  padding: 12px 20px;
   border-radius: 10px;
   font-size: 15px;
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background 0.2s;
+  transition: 0.2s;
 }
 
-.tg-btn.primary:hover {
-  background: var(--tg-accent-hover);
+.primary-btn {
+  background: var(--accent);
+  color: white;
 }
 
-.tg-auth-status {
+.primary-btn:hover {
+  background: var(--accent-hover);
+}
+
+.full-width {
+  width: 100%;
+}
+
+.status-msg {
   margin-top: 14px;
   font-size: 13px;
+  text-align: center;
   min-height: 20px;
 }
 
-.tg-auth-status.error { color: #e53935; }
-.tg-auth-status.success { color: #4caf50; }
+.status-msg.error { color: var(--danger); }
+.status-msg.success { color: var(--success); }
+
+.cloud-info {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
 
 /* ===================================================
-   MAIN TELEGRAM APP LAYOUT
+   RESTORED ORIGINAL SIDEBAR
    =================================================== */
-.tg-main-container {
+.main-wrapper {
   display: flex;
   height: 100%;
   width: 100%;
 }
 
-/* SIDEBAR / CHATS */
-.tg-sidebar {
-  width: 360px;
-  background: var(--tg-bg-sidebar);
-  border-right: 1px solid var(--tg-border);
+.sidebar {
+  width: 340px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  position: relative;
 }
 
-.tg-sidebar-header {
-  height: 56px;
-  padding: 0 12px;
+.sidebar-header {
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.user-profile {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.tg-icon-btn {
-  background: transparent;
-  border: none;
-  color: var(--tg-text-secondary);
-  cursor: pointer;
-  padding: 8px;
+.avatar {
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
+  background: linear-gradient(135deg, #2aabee, #1e88e5);
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: 0.2s;
+  font-weight: 700;
+  font-size: 17px;
+  color: white;
 }
 
-.tg-icon-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--tg-text-primary);
+.avatar.general-avatar {
+  background: linear-gradient(135deg, #3390ec, #1f69b3);
 }
 
-.tg-search-wrapper {
-  flex: 1;
-  background: #242f3d;
-  border-radius: 22px;
-  height: 38px;
+.user-meta .name {
+  font-weight: 600;
+  font-size: 14.5px;
+}
+
+.status-badge {
+  font-size: 11.5px;
+  color: var(--success);
   display: flex;
   align-items: center;
-  padding: 0 14px;
-  gap: 8px;
+  gap: 4px;
 }
 
-.tg-search-wrapper .search-icon {
-  color: var(--tg-text-secondary);
+.status-badge::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
 }
 
-.tg-search-wrapper input {
+.header-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.icon-btn {
   background: transparent;
   border: none;
-  color: var(--tg-text-primary);
-  font-size: 14px;
+  font-size: 18px;
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  transition: 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+}
+
+.search-box {
+  padding: 10px 14px;
+}
+
+.search-box input {
   width: 100%;
+  padding: 8px 14px;
+  background: #242f3d;
+  border: 1px solid transparent;
+  border-radius: 20px;
+  color: var(--text-primary);
+  font-size: 13.5px;
   outline: none;
+  transition: border-color 0.2s;
 }
 
-.tg-search-wrapper input::placeholder {
-  color: var(--tg-text-secondary);
+.search-box input:focus {
+  border-color: var(--accent);
 }
 
-/* CHAT LIST ITEMS */
-.tg-chats-list {
+.chat-list {
   flex: 1;
   overflow-y: auto;
 }
 
-.tg-chat-item {
+.chat-item {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
   cursor: pointer;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.02);
   transition: background 0.15s;
 }
 
-.tg-chat-item:hover {
-  background: var(--tg-bg-sidebar-hover);
+.chat-item:hover {
+  background: var(--bg-sidebar-hover);
 }
 
-.tg-chat-item.active {
+.chat-item.active {
   background: #2b5278;
 }
 
-.tg-chat-avatar {
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #2aabee, #2299d9);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 20px;
-  color: white;
-  flex-shrink: 0;
-}
-
-.tg-chat-avatar.general {
-  background: linear-gradient(135deg, #3390ec, #1f69b3);
-}
-
-.tg-chat-info {
+.chat-item-meta {
   flex: 1;
   overflow: hidden;
 }
 
-.tg-chat-title-row {
+.chat-item-top {
   display: flex;
   justify-content: space-between;
   margin-bottom: 4px;
 }
 
-.tg-chat-title {
+.chat-title {
   font-weight: 600;
-  font-size: 15px;
-  color: var(--tg-text-primary);
+  font-size: 14.5px;
 }
 
-.tg-chat-time {
+.chat-time {
   font-size: 12px;
-  color: var(--tg-text-secondary);
+  color: var(--text-secondary);
 }
 
-.tg-chat-item.active .tg-chat-time {
-  color: #c0d8f0;
+.chat-item.active .chat-time {
+  color: #c2d8ed;
 }
 
-.tg-chat-preview-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tg-chat-preview {
-  font-size: 13.5px;
-  color: var(--tg-text-secondary);
+.chat-preview {
+  font-size: 13px;
+  color: var(--text-secondary);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 220px;
 }
 
-.tg-chat-item.active .tg-chat-preview {
-  color: #e1ecf7;
-}
-
-.tg-unread-badge {
-  background: var(--tg-badge);
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 7px;
-  border-radius: 12px;
-}
-
-.tg-fab {
-  position: absolute;
-  bottom: 24px;
-  right: 20px;
-  width: 54px;
-  height: 54px;
-  border-radius: 50%;
-  background: var(--tg-accent);
-  color: white;
-  border: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: transform 0.2s;
-}
-
-.tg-fab:hover {
-  transform: scale(1.05);
+.chat-item.active .chat-preview {
+  color: #e5edf5;
 }
 
 /* ===================================================
-   CHAT COLUMN (TELEGRAM DOODLE BACKGROUND & HEADER)
+   INNER CHAT VIEW (AUTHENTIC TELEGRAM AESTHETICS)
    =================================================== */
-.tg-chat-column {
+.chat-view {
   flex: 1;
   display: flex;
   flex-direction: column;
-  background-color: var(--tg-bg-chat);
-  /* Telegram classic subtle wallpaper texture pattern */
-  background-image: radial-gradient(#141c26 15%, transparent 16%), radial-gradient(#141c26 15%, transparent 16%);
-  background-size: 60px 60px;
-  background-position: 0 0, 30px 30px;
+  background-color: var(--tg-chat-bg);
+  /* Classic Telegram pattern texture */
+  background-image: radial-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 0);
+  background-size: 24px 24px;
   position: relative;
 }
 
-.tg-chat-header {
+.chat-header {
   height: 56px;
-  background: var(--tg-bg-header);
-  border-bottom: 1px solid var(--tg-border);
+  padding: 0 18px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 0 16px;
+  background: var(--bg-header);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.3);
   z-index: 5;
 }
 
-.tg-chat-header-user {
+.chat-header-info {
   display: flex;
   align-items: center;
   gap: 12px;
 }
 
-.tg-chat-header-avatar {
+.chat-header-avatar {
   width: 40px;
   height: 40px;
   border-radius: 50%;
@@ -420,26 +413,29 @@ body, html {
   font-size: 18px;
 }
 
-.tg-chat-header-meta h3 {
+.chat-header-text h2 {
   font-size: 15px;
   font-weight: 600;
 }
 
-.tg-chat-status {
+.chat-status {
   font-size: 12px;
-  color: var(--tg-text-secondary);
+  color: var(--text-secondary);
 }
 
-.tg-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+.badge-tag {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 6px;
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+  font-weight: 600;
 }
 
 /* ===================================================
-   MESSAGES FEED & AUTHENTIC TELEGRAM BUBBLES
+   TELEGRAM MESSAGES & BUBBLES
    =================================================== */
-.tg-history-container {
+.messages-container {
   flex: 1;
   overflow-y: auto;
   padding: 16px 20px;
@@ -449,65 +445,66 @@ body, html {
 
 .tg-date-bubble {
   align-self: center;
-  background: rgba(0, 0, 0, 0.4);
+  background: rgba(0, 0, 0, 0.35);
   backdrop-filter: blur(4px);
-  color: #fff;
+  color: rgba(255, 255, 255, 0.9);
   font-size: 12px;
   font-weight: 600;
-  padding: 4px 12px;
-  border-radius: 14px;
-  margin: 12px 0 16px;
-}
-
-.tg-messages-feed {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-/* MESSAGE BUBBLE */
-.tg-msg {
-  display: flex;
-  flex-direction: column;
-  max-width: 480px;
-  min-width: 120px;
-  padding: 8px 12px 6px;
+  padding: 3px 12px;
   border-radius: 12px;
+  margin: 10px 0 16px;
+}
+
+.msg-feed {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+/* TELEGRAM BUBBLE GEOMETRY */
+.tg-bubble {
+  max-width: 480px;
+  min-width: 110px;
+  padding: 6px 10px 4px 12px;
+  border-radius: 14px;
   position: relative;
   font-size: 14.5px;
   line-height: 1.35;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
   word-break: break-word;
   user-select: text;
+  display: inline-block;
+  clear: both;
 }
 
-.tg-msg.incoming {
+.tg-bubble.incoming {
   align-self: flex-start;
-  background: var(--tg-bg-msg-in);
-  color: var(--tg-text-primary);
-  border-bottom-left-radius: 2px;
+  background: var(--tg-msg-in);
+  color: var(--text-primary);
+  border-bottom-left-radius: 4px;
 }
 
-.tg-msg.outgoing {
+.tg-bubble.outgoing {
   align-self: flex-end;
-  background: var(--tg-bg-msg-out);
+  background: var(--tg-msg-out);
   color: #ffffff;
-  border-bottom-right-radius: 2px;
+  border-bottom-right-radius: 4px;
 }
 
-.tg-msg-sender {
+.tg-sender-name {
   font-size: 13px;
   font-weight: 600;
-  color: var(--tg-text-sender);
+  color: var(--tg-sender-name);
   margin-bottom: 2px;
+  display: block;
 }
 
 .tg-msg-text {
-  margin-bottom: 2px;
+  display: inline;
 }
 
-/* TELEGRAM INLINE TIME & DOUBLE CHECKMARKS */
-.tg-msg-meta {
+/* TELEGRAM INLINE TIME & CHECKMARKS */
+.tg-meta {
   float: right;
   display: inline-flex;
   align-items: center;
@@ -515,8 +512,15 @@ body, html {
   margin-left: 10px;
   margin-top: 4px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
   user-select: none;
+}
+
+.tg-bubble.incoming .tg-meta {
+  color: var(--tg-time-in);
+}
+
+.tg-bubble.outgoing .tg-meta {
+  color: var(--tg-time-out);
 }
 
 .tg-checkmarks {
@@ -525,58 +529,69 @@ body, html {
 }
 
 /* ===================================================
-   TELEGRAM PHOTO & VIDEO VIEWER IN CHAT
+   TELEGRAM PHOTO / VIDEO / FILE PRESENTATION
    =================================================== */
-.tg-media-wrap {
-  margin-top: 4px;
+
+/* PHOTO (BORDERLESS TELEGRAM CARD) */
+.tg-photo-card {
   position: relative;
   border-radius: 10px;
   overflow: hidden;
   max-width: 420px;
-  background: #000;
-}
-
-/* PHOTO */
-.tg-photo-box {
-  position: relative;
+  margin-top: 2px;
   cursor: pointer;
 }
 
-.tg-photo-box img {
+.tg-photo-card img {
   width: 100%;
   max-height: 380px;
   object-fit: cover;
   display: block;
   border-radius: 8px;
+  transition: transform 0.2s ease;
 }
 
-/* TELEGRAM FLOATING DOWNLOAD BUTTON */
-.tg-media-dl-badge {
+.tg-photo-card:hover img {
+  transform: scale(1.015);
+}
+
+/* OVERLAY DOWNLOAD BUTTON */
+.tg-media-dl-btn {
   position: absolute;
   top: 8px;
   right: 8px;
-  background: rgba(0, 0, 0, 0.6);
+  background: rgba(0, 0, 0, 0.55);
   backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
+  color: #fff;
   border-radius: 20px;
-  padding: 5px 10px;
+  padding: 4px 10px;
   font-size: 11.5px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  transition: 0.2s;
+  transition: background 0.2s;
   z-index: 2;
 }
 
-.tg-media-dl-badge:hover {
-  background: var(--tg-accent);
+.tg-media-dl-btn:hover {
+  background: var(--accent);
 }
 
 /* VIDEO */
-.tg-video-box video {
+.tg-video-card {
+  position: relative;
+  max-width: 420px;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+  margin-top: 2px;
+}
+
+.tg-video-card video {
   width: 100%;
   max-height: 380px;
   display: block;
@@ -584,7 +599,7 @@ body, html {
   outline: none;
 }
 
-.tg-video-footer {
+.tg-video-bottom {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -593,17 +608,16 @@ body, html {
   font-size: 12px;
 }
 
-.tg-video-name {
+.tg-video-title {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 260px;
+  color: #ccc;
 }
 
-/* ===================================================
-   TELEGRAM CIRCULAR FILE DOCUMENT CARD (APK, ZIP, ETC)
-   =================================================== */
-.tg-doc-card {
+/* TELEGRAM ICONIC CIRCULAR FILE CARD */
+.tg-doc-item {
   display: flex;
   align-items: center;
   gap: 12px;
@@ -613,11 +627,11 @@ body, html {
   margin-top: 4px;
 }
 
-.tg-doc-circle {
+.tg-doc-round-btn {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--tg-accent);
+  background: var(--accent);
   color: white;
   display: flex;
   align-items: center;
@@ -627,31 +641,31 @@ body, html {
   transition: background 0.2s;
 }
 
-.tg-doc-circle:hover {
-  background: var(--tg-accent-hover);
+.tg-doc-round-btn:hover {
+  background: var(--accent-hover);
 }
 
-.tg-doc-details {
+.tg-doc-meta {
   flex: 1;
   overflow: hidden;
 }
 
-.tg-doc-name {
+.tg-doc-title {
   font-size: 13.5px;
   font-weight: 600;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  color: var(--tg-text-primary);
+  color: var(--text-primary);
 }
 
 .tg-doc-size {
   font-size: 11.5px;
-  color: var(--tg-text-secondary);
+  color: var(--text-secondary);
   margin-top: 2px;
 }
 
-.tg-doc-dl-btn {
+.tg-doc-action-btn {
   background: rgba(255, 255, 255, 0.12);
   border: none;
   color: white;
@@ -663,28 +677,29 @@ body, html {
   display: flex;
   align-items: center;
   gap: 4px;
+  transition: 0.2s;
 }
 
-.tg-doc-dl-btn:hover {
-  background: var(--tg-accent);
+.tg-doc-action-btn:hover {
+  background: var(--accent);
 }
 
 /* ===================================================
-   TELEGRAM ICONIC COMPOSER (FOOTER)
+   TELEGRAM COMPOSER (BOTTOM BAR)
    =================================================== */
 .tg-composer {
   padding: 8px 16px 12px;
-  background: var(--tg-bg-composer);
+  background: var(--bg-header);
+  border-top: 1px solid rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: flex-end;
   gap: 8px;
-  border-top: 1px solid var(--tg-border);
 }
 
-.tg-composer-btn {
+.tg-clip-btn {
   background: transparent;
   border: none;
-  color: var(--tg-text-secondary);
+  color: var(--text-secondary);
   cursor: pointer;
   padding: 10px;
   border-radius: 50%;
@@ -694,26 +709,26 @@ body, html {
   transition: color 0.15s;
 }
 
-.tg-composer-btn:hover {
-  color: var(--tg-accent);
+.tg-clip-btn:hover {
+  color: var(--accent);
 }
 
-.tg-input-wrapper {
+.tg-input-pill {
   flex: 1;
   background: #242f3d;
   border-radius: 20px;
-  padding: 10px 16px;
+  padding: 8px 14px;
   display: flex;
   align-items: center;
-  min-height: 44px;
+  min-height: 42px;
   max-height: 140px;
 }
 
-.tg-input-wrapper textarea {
+.tg-input-pill textarea {
   width: 100%;
   background: transparent;
   border: none;
-  color: var(--tg-text-primary);
+  color: var(--text-primary);
   font-size: 15px;
   line-height: 1.35;
   outline: none;
@@ -721,16 +736,32 @@ body, html {
   max-height: 120px;
 }
 
-.tg-input-wrapper textarea::placeholder {
-  color: var(--tg-text-secondary);
+.tg-input-pill textarea::placeholder {
+  color: var(--text-secondary);
 }
 
-/* TELEGRAM SEND BUTTON (AIRPLANE) */
-.tg-send-btn {
+.tg-emoji-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s;
+}
+
+.tg-emoji-btn:hover {
+  color: var(--accent);
+}
+
+/* TELEGRAM BLUE AIRPLANE SEND BUTTON */
+.tg-airplane-btn {
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background: var(--tg-accent);
+  background: var(--accent);
   border: none;
   color: white;
   display: flex;
@@ -741,66 +772,66 @@ body, html {
   flex-shrink: 0;
 }
 
-.tg-send-btn:hover {
-  background: var(--tg-accent-hover);
+.tg-airplane-btn:hover {
+  background: var(--accent-hover);
   transform: scale(1.06);
 }
 
-.tg-send-btn:active {
+.tg-airplane-btn:active {
   transform: scale(0.96);
 }
 
-.send-plane-icon {
+.tg-airplane-btn svg {
   margin-left: 2px;
 }
 
 /* UPLOAD OVERLAY */
-.tg-upload-overlay {
+.upload-progress-card {
   margin: 0 16px 8px;
-}
-
-.tg-upload-box {
-  background: var(--tg-bg-sidebar);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--bg-sidebar);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 10px 14px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
 }
 
-.tg-upload-info {
+.upload-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.upload-details {
   flex: 1;
 }
 
-.tg-upload-title {
+.upload-name {
   font-size: 13px;
   font-weight: 600;
 }
 
-.tg-upload-subtitle {
+.upload-stats {
   font-size: 11px;
-  color: var(--tg-text-secondary);
-  margin-bottom: 4px;
+  color: var(--text-secondary);
 }
 
-.tg-progress-bar {
+.progress-bar-track {
   height: 4px;
   background: #0e1621;
   border-radius: 2px;
   overflow: hidden;
 }
 
-.tg-progress-fill {
+.progress-bar-fill {
   height: 100%;
-  background: var(--tg-accent);
+  background: var(--accent);
   transition: width 0.2s;
 }
 
 /* ===================================================
-   FULLSCREEN LIGHTBOX MODAL
+   LIGHTBOX MODAL
    =================================================== */
-.tg-lightbox {
+.lightbox-modal {
   position: fixed;
   top: 0;
   left: 0;
@@ -812,7 +843,7 @@ body, html {
   justify-content: center;
 }
 
-.tg-lightbox-backdrop {
+.lightbox-backdrop {
   position: absolute;
   top: 0;
   left: 0;
@@ -822,7 +853,7 @@ body, html {
   backdrop-filter: blur(12px);
 }
 
-.tg-lightbox-container {
+.lightbox-content {
   position: relative;
   z-index: 2001;
   display: flex;
@@ -831,7 +862,7 @@ body, html {
   max-height: 90vh;
 }
 
-.tg-lightbox-topbar {
+.lightbox-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -840,18 +871,18 @@ body, html {
   border-radius: 12px 12px 0 0;
 }
 
-.tg-lightbox-title {
+.lightbox-title {
   font-size: 14px;
   font-weight: 600;
 }
 
-.tg-lightbox-btns {
+.lightbox-actions {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.tg-lightbox-action-btn {
+.btn-lightbox {
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
@@ -859,17 +890,20 @@ body, html {
   border-radius: 8px;
   font-size: 13px;
   font-weight: 600;
+  cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
-  cursor: pointer;
 }
 
-.tg-lightbox-action-btn:hover {
-  background: var(--tg-accent);
+.btn-lightbox:hover {
+  background: var(--accent);
 }
 
-.tg-lightbox-image-wrap {
+.btn-lightbox.close-btn {
+  padding: 6px 10px;
+}
+
+.lightbox-body {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -878,7 +912,7 @@ body, html {
   overflow: hidden;
 }
 
-.tg-lightbox-image-wrap img {
+.lightbox-body img {
   max-width: 90vw;
   max-height: 80vh;
   object-fit: contain;
@@ -892,10 +926,10 @@ body, html {
   .mobile-only {
     display: block;
   }
-  .tg-sidebar {
+  .sidebar {
     width: 100%;
   }
-  .tg-chat-column {
+  .chat-view {
     position: absolute;
     top: 0;
     left: 0;
@@ -904,7 +938,7 @@ body, html {
     z-index: 10;
     display: none;
   }
-  .tg-chat-column.active {
+  .chat-view.active {
     display: flex;
   }
 }
