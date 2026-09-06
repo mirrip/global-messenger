@@ -2,7 +2,9 @@
  * Global Messenger — High-Performance Client Logic
  * Features:
  * - Sub-300ms message delivery via CacheService
- * - IndexedDB Outbox Message Queue for offline resiliency
+ * - Inline Photos with Lightbox Viewer & Download
+ * - Inline Video Players with Controls & Download
+ * - Generic File Cards with Direct Download Button
  * - 1 TB Resumable Chunked Streaming File Transfers
  * - Web Push FCM service worker support
  */
@@ -16,7 +18,8 @@ class GlobalMessenger {
     this.lastSeq = 0;
     this.isPolling = false;
     this.pollTimer = null;
-    this.outbox = [];
+    this.localBlobUrls = new Map(); // Store local Blob URLs for immediate high-res view
+    this.activeLightboxData = null;
 
     this.initElements();
     this.initEvents();
@@ -50,7 +53,13 @@ class GlobalMessenger {
       uploadFileName: document.getElementById('upload-file-name'),
       uploadFileStats: document.getElementById('upload-file-stats'),
       uploadProgressFill: document.getElementById('upload-progress-fill'),
-      uploadCancelBtn: document.getElementById('upload-cancel-btn')
+      uploadCancelBtn: document.getElementById('upload-cancel-btn'),
+      // Lightbox
+      lightboxModal: document.getElementById('lightbox-modal'),
+      lightboxImg: document.getElementById('lightbox-img'),
+      lightboxTitle: document.getElementById('lightbox-title'),
+      lightboxDownloadBtn: document.getElementById('lightbox-download-btn'),
+      lightboxCloseBtn: document.getElementById('lightbox-close-btn')
     };
     this.authMode = 'login';
   }
@@ -79,6 +88,15 @@ class GlobalMessenger {
         this.openChat('dm:' + clean, '@' + clean);
       }
     });
+
+    // Lightbox events
+    this.el.lightboxCloseBtn.addEventListener('click', () => this.closeLightbox());
+    this.el.lightboxModal.querySelector('.lightbox-backdrop').addEventListener('click', () => this.closeLightbox());
+    this.el.lightboxDownloadBtn.addEventListener('click', () => {
+      if (this.activeLightboxData) {
+        this.downloadMedia(this.activeLightboxData.url, this.activeLightboxData.name);
+      }
+    });
   }
 
   setAuthMode(mode) {
@@ -91,7 +109,6 @@ class GlobalMessenger {
 
   async apiRequest(action, payload = {}) {
     const postData = JSON.stringify({ action, payload });
-    // Text/plain prevents preflight CORS OPTIONS requests in browsers
     const response = await fetch(this.config.PRIMARY_ENDPOINT, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -198,6 +215,7 @@ class GlobalMessenger {
     }
   }
 
+  // RENDER MESSAGE WITH INLINE PHOTOS, VIDEOS & DOWNLOAD BUTTONS
   appendMessage(msg, isOptimistic = false) {
     const isOutgoing = msg.senderUsername === this.user.username;
     const bubble = document.createElement('div');
@@ -207,17 +225,71 @@ class GlobalMessenger {
     let contentHtml = '';
     if (msg.content && msg.content.file) {
       const f = msg.content.file;
-      contentHtml = `
-        <div class="file-attachment">
-          <span class="file-icon">📁</span>
-          <div class="file-info">
-            <div class="file-name">${this.escapeHtml(f.name)}</div>
-            <div class="file-size">${this.formatBytes(f.size)} • ${f.mimeType}</div>
+      const fileUrl = this.localBlobUrls.get(f.id) || f.url || this.buildDriveDownloadUrl(f);
+      const isImage = f.mimeType.startsWith('image/') || /\.(jpe?g|png|webp|gif|svg)$/i.test(f.name);
+      const isVideo = f.mimeType.startsWith('video/') || /\.(mp4|webm|mov|mkv)$/i.test(f.name);
+      const isAudio = f.mimeType.startsWith('audio/') || /\.(mp3|wav|ogg|m4a|aac)$/i.test(f.name);
+
+      if (isImage) {
+        // 1. INLINE PHOTO WITH LIGHTBOX & DOWNLOAD BUTTON
+        contentHtml = `
+          <div class="media-container photo-preview" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}">
+            <img src="${this.escapeHtml(fileUrl)}" alt="${this.escapeHtml(f.name)}" loading="lazy">
+            <div class="media-overlay-actions">
+              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать фото">
+                ⬇ Скачать
+              </button>
+            </div>
           </div>
-        </div>
-      `;
+          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      } else if (isVideo) {
+        // 2. INLINE VIDEO PLAYER WITH DOWNLOAD BUTTON
+        contentHtml = `
+          <div class="media-container video-preview">
+            <video controls playsinline preload="metadata" src="${this.escapeHtml(fileUrl)}"></video>
+            <div class="video-bottom-bar">
+              <span class="video-title" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)} (${this.formatBytes(f.size)})</span>
+              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать видео">
+                ⬇ Скачать
+              </button>
+            </div>
+          </div>
+          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      } else if (isAudio) {
+        // 3. INLINE AUDIO PLAYER WITH DOWNLOAD
+        contentHtml = `
+          <div class="media-container audio-preview">
+            <audio controls src="${this.escapeHtml(fileUrl)}"></audio>
+            <div class="video-bottom-bar">
+              <span class="video-title">${this.escapeHtml(f.name)}</span>
+              <button class="btn-media-dl btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать аудио">
+                ⬇ Скачать
+              </button>
+            </div>
+          </div>
+          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      } else {
+        // 4. GENERIC DOCUMENT / APK / ARCHIVE CARD WITH EXPLICIT DOWNLOAD BUTTON
+        const icon = this.getFileIcon(f.name);
+        contentHtml = `
+          <div class="file-card">
+            <div class="file-card-icon">${icon}</div>
+            <div class="file-card-info">
+              <div class="file-card-name" title="${this.escapeHtml(f.name)}">${this.escapeHtml(f.name)}</div>
+              <div class="file-card-meta">${this.formatBytes(f.size)}</div>
+            </div>
+            <button class="file-card-dl-btn btn-dl-action" data-url="${this.escapeHtml(fileUrl)}" data-name="${this.escapeHtml(f.name)}" title="Скачать файл">
+              ⬇ Скачать
+            </button>
+          </div>
+          ${msg.content.text ? '<div style="margin-top:6px;">' + this.escapeHtml(msg.content.text) + '</div>' : ''}
+        `;
+      }
     } else {
-      contentHtml = `<div>${this.escapeHtml(msg.content.text || '')}</div>`;
+      contentHtml = `<div>${this.escapeHtml(msg.content ? msg.content.text : '')}</div>`;
     }
 
     const time = new Date(msg.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -228,8 +300,66 @@ class GlobalMessenger {
       <div class="message-time">${time}</div>
     `;
 
+    // Attach click events to inline elements
+    bubble.querySelectorAll('.photo-preview').forEach(el => {
+      el.addEventListener('click', (e) => {
+        if (e.target.closest('.btn-dl-action')) return;
+        this.openLightbox(el.getAttribute('data-url'), el.getAttribute('data-name'));
+      });
+    });
+
+    bubble.querySelectorAll('.btn-dl-action').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.downloadMedia(btn.getAttribute('data-url'), btn.getAttribute('data-name'));
+      });
+    });
+
     this.el.messagesFeed.appendChild(bubble);
     this.el.messagesContainer.scrollTop = this.el.messagesContainer.scrollHeight;
+  }
+
+  buildDriveDownloadUrl(f) {
+    if (f.driveFileId && !f.driveFileId.startsWith('drv_')) {
+      return 'https://drive.google.com/uc?export=download&id=' + f.driveFileId;
+    }
+    return f.url || '#';
+  }
+
+  getFileIcon(name) {
+    if (/\.(zip|rar|7z|tar|gz)$/i.test(name)) return '🗜️';
+    if (/\.(apk|exe|dmg|msi)$/i.test(name)) return '📦';
+    if (/\.(pdf|docx?|xlsx?|pptx?|txt)$/i.test(name)) return '📄';
+    return '📁';
+  }
+
+  // LIGHTBOX LOGIC
+  openLightbox(url, name) {
+    this.activeLightboxData = { url, name };
+    this.el.lightboxImg.src = url;
+    this.el.lightboxTitle.innerText = name || 'Фотография';
+    this.el.lightboxModal.classList.remove('hidden');
+  }
+
+  closeLightbox() {
+    this.el.lightboxModal.classList.add('hidden');
+    this.el.lightboxImg.src = '';
+    this.activeLightboxData = null;
+  }
+
+  // UNIVERSAL FILE DOWNLOADER
+  downloadMedia(url, fileName) {
+    if (!url || url === '#') {
+      alert('Файл подготавливается к скачиванию на сервере');
+      return;
+    }
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = fileName || 'download';
+    a.target = '_blank';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 
   async syncMessages() {
@@ -273,6 +403,9 @@ class GlobalMessenger {
       return;
     }
 
+    // Create local object URL for instant, high-speed preview
+    const localBlobUrl = URL.createObjectURL(file);
+
     this.el.uploadCard.classList.remove('hidden');
     this.el.uploadFileName.innerText = file.name;
     this.el.uploadProgressFill.style.width = '0%';
@@ -287,6 +420,8 @@ class GlobalMessenger {
       });
 
       const fileId = init.fileId;
+      this.localBlobUrls.set(fileId, localBlobUrl);
+
       const chunkSize = this.config.CHUNK_SIZE_BYTES;
       const totalChunks = Math.ceil(file.size / chunkSize);
 
@@ -299,30 +434,30 @@ class GlobalMessenger {
         // Обновление прогресса
         const pct = Math.round((end / file.size) * 100);
         this.el.uploadProgressFill.style.width = pct + '%';
-        this.el.uploadFileStats.innerText = `${this.formatBytes(end)} / ${this.formatBytes(file.size)} (${pct}%)`;
+        this.el.uploadFileStats.innerText = this.formatBytes(end) + ' / ' + this.formatBytes(file.size) + ' (' + pct + '%)';
 
-        // Небольшая задержка для плавности UI
-        await new Promise(r => setTimeout(r, 50));
+        await new Promise(r => setTimeout(r, 40));
       }
 
-      // Завершаем регистрацию файла в реестре
+      // Завершаем регистрацию файла в реестре Google Drive
       await this.apiRequest('finishChunkedUpload', {
         sessionToken: this.session.sessionToken,
         fileId: fileId,
         driveFileId: 'drv_' + fileId
       });
 
-      // Отправляем карточку файла в чат
+      // Отправляем карточку медиафайла в чат
       await this.apiRequest('send', {
         sessionToken: this.session.sessionToken,
         chatId: this.currentChatId,
-        messageType: 'file',
+        messageType: file.type.startsWith('image/') ? 'image' : (file.type.startsWith('video/') ? 'video' : 'file'),
         content: {
           file: {
             id: fileId,
             name: file.name,
             size: file.size,
-            mimeType: file.type || 'application/octet-stream'
+            mimeType: file.type || 'application/octet-stream',
+            url: localBlobUrl
           }
         }
       });
@@ -345,7 +480,7 @@ class GlobalMessenger {
 
   escapeHtml(str) {
     const div = document.createElement('div');
-    div.innerText = str;
+    div.innerText = str || '';
     return div.innerHTML;
   }
 
