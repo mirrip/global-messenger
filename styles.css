@@ -407,9 +407,10 @@ body, html {
 }
 
 .message-bubble {
-  max-width: 65%;
+  max-width: 75%;
+  min-width: 140px;
   padding: 10px 14px;
-  border-radius: 14px;
+  border-radius: 16px;
   font-size: 14px;
   line-height: 1.4;
   position: relative;
@@ -434,47 +435,303 @@ body, html {
   font-size: 11px;
   font-weight: 600;
   color: #60a5fa;
-  margin-bottom: 2px;
+  margin-bottom: 4px;
 }
 
 .message-time {
   font-size: 10px;
-  opacity: 0.7;
+  opacity: 0.75;
   text-align: right;
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
-/* MEDIA & FILE ATTACHMENTS */
-.file-attachment {
+/* ===================================================
+   INLINE PHOTO, VIDEO & FILE ATTACHMENTS WITH DOWNLOAD
+   =================================================== */
+
+/* PHOTO CONTAINER */
+.media-container {
+  margin-top: 6px;
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.photo-preview {
+  position: relative;
+  cursor: pointer;
+  max-width: 380px;
+  max-height: 380px;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+.photo-preview img {
+  width: 100%;
+  height: auto;
+  max-height: 380px;
+  object-fit: cover;
+  display: block;
+  border-radius: 12px;
+  transition: transform 0.2s ease;
+}
+
+.photo-preview:hover img {
+  transform: scale(1.02);
+}
+
+/* OVERLAY DOWNLOAD BUTTON FOR MEDIA */
+.media-overlay-actions {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: flex;
+  gap: 6px;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+
+.photo-preview:hover .media-overlay-actions,
+.video-preview:hover .media-overlay-actions {
+  opacity: 1;
+}
+
+.btn-media-dl {
+  background: rgba(15, 23, 42, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: 0.2s;
+  text-decoration: none;
+}
+
+.btn-media-dl:hover {
+  background: rgba(37, 99, 235, 0.9);
+  border-color: rgba(255, 255, 255, 0.4);
+}
+
+/* VIDEO CONTAINER */
+.video-preview {
+  position: relative;
+  max-width: 420px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: #000000;
+}
+
+.video-preview video {
+  width: 100%;
+  max-height: 360px;
+  display: block;
+  border-radius: 12px;
+  outline: none;
+  background: #000;
+}
+
+.video-bottom-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  font-size: 11px;
+}
+
+.video-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 250px;
+  color: var(--text-secondary);
+}
+
+/* AUDIO CONTAINER */
+.audio-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+}
+
+.audio-preview audio {
+  width: 100%;
+  height: 36px;
+}
+
+/* GENERIC FILE ATTACHMENT CARD (APK, ZIP, PDF, ETC.) */
+.file-card {
   display: flex;
   align-items: center;
   gap: 12px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 8px 12px;
-  border-radius: 8px;
-  margin-top: 4px;
+  background: rgba(0, 0, 0, 0.25);
+  padding: 10px 14px;
+  border-radius: 12px;
+  margin-top: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }
 
-.file-icon {
-  font-size: 24px;
+.file-card-icon {
+  font-size: 28px;
+  width: 42px;
+  height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
-.file-info {
+.file-card-info {
   flex: 1;
   overflow: hidden;
 }
 
-.file-name {
+.file-card-name {
   font-weight: 600;
   font-size: 13px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: var(--text-primary);
 }
 
-.file-size {
+.file-card-meta {
   font-size: 11px;
-  opacity: 0.8;
+  color: var(--text-secondary);
+  margin-top: 2px;
+}
+
+.file-card-dl-btn {
+  background: rgba(255, 255, 255, 0.12);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--text-primary);
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: 0.2s;
+  flex-shrink: 0;
+  text-decoration: none;
+}
+
+.file-card-dl-btn:hover {
+  background: var(--accent);
+  color: white;
+  border-color: transparent;
+}
+
+/* LIGHTBOX MODAL */
+.lightbox-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lightbox-backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.88);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.lightbox-content {
+  position: relative;
+  z-index: 1001;
+  display: flex;
+  flex-direction: column;
+  max-width: 92vw;
+  max-height: 92vh;
+}
+
+.lightbox-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: rgba(18, 24, 36, 0.85);
+  border-radius: 12px 12px 0 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.lightbox-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 60vw;
+}
+
+.lightbox-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.btn-lightbox {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: white;
+  padding: 6px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.btn-lightbox:hover {
+  background: var(--accent);
+}
+
+.btn-lightbox.close-btn {
+  padding: 6px 10px;
+  font-size: 15px;
+}
+
+.lightbox-body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  border-radius: 0 0 12px 12px;
+  overflow: hidden;
+  max-height: calc(92vh - 60px);
+}
+
+.lightbox-body img {
+  max-width: 90vw;
+  max-height: calc(92vh - 80px);
+  object-fit: contain;
+  display: block;
 }
 
 /* UPLOAD PROGRESS CARD */
